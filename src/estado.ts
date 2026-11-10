@@ -220,6 +220,8 @@ export async function marcar(n: number, resultado: Resultado) {
 export async function criarSenha(senha: string) {
   await ponte().senha(senha);
   estado.senhaCriada = true;
+  // guarda no aparelho também: ao recarregar, a fita já aparece lacrada antes de o Drive responder
+  await db.lista.update('atual', { senhaCriada: true });
   mudou();
 }
 

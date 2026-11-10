@@ -5,7 +5,7 @@ import { dois, placar, tempo, type AudioInfo, type Resultado } from '../regras';
 import { go, type Rota } from '../router';
 import { FITA_2, fitaSvg, icone, moverFita } from '../svg';
 import { esc } from '../ui';
-import { fita2Ouvida, ligarSenha, marcarFita2Ouvida, painelSenha } from './senha-noiva';
+import { atualizarSenha, fita2Ouvida, ligarSenha, marcarFita2Ouvida, painelSenha } from './senha-noiva';
 import type { TelaApp } from './tipos';
 
 // A fita do noivo tocando no deck. Depois, a madrinha marca se deu match.
@@ -159,7 +159,7 @@ export const tocar: TelaApp = {
     if (d) d.innerHTML = botoesMatch();
     // aviso de "ainda subindo pro Drive" na fita lacrada (o formulário não é redesenhado enquanto ela digita)
     const c = document.querySelector<HTMLElement>('.tela-tocar .coluna-senha');
-    if (c?.querySelector('.senha-pronta')) c.innerHTML = painelSenha();
+    if (c) atualizarSenha(c);
   },
   desmontar() {
     soltar?.();

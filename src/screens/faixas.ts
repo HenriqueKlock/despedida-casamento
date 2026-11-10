@@ -3,6 +3,8 @@ import { dois, placar } from '../regras';
 import { go } from '../router';
 import { icone } from '../svg';
 import { contador, esc } from '../ui';
+import { esquecerTroca } from './fim';
+import { esquecerFita2Ouvida } from './senha-noiva';
 import type { TelaApp } from './tipos';
 
 /** Só aparece quando algo ainda não chegou ao Drive; com tudo salvo, o rodapé fica limpo. */
@@ -76,6 +78,8 @@ export const faixas: TelaApp = {
     raiz.querySelector('[data-acao="zerar"]')?.addEventListener('click', async () => {
       if (zerarArmado > Date.now()) {
         zerarArmado = 0;
+        esquecerTroca();
+        esquecerFita2Ouvida();
         await zerarPlacar();
       } else {
         zerarArmado = Date.now() + 4000;

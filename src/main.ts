@@ -32,21 +32,29 @@ function mostrar() {
   window.scrollTo(0, 0);
 }
 
+/** O link das madrinhas traz a chave (#k=…): guarda no aparelho e tira do endereço, para não aparecer na tela. */
+function lerChaveDoEndereco(): boolean {
+  const k = chaveDoEndereco(location.hash);
+  if (!k) return false;
+  guardarChave(k);
+  history.replaceState(null, '', location.pathname + location.search + '#/');
+  return true;
+}
+
 async function iniciar() {
   if (import.meta.env.VITE_MOCK === '1') {
     const { ponteDeTeste } = await import('./mock');
     usarPonte(ponteDeTeste);
     (window as unknown as { __fita: unknown }).__fita = await import('./fita');
   }
-  // o link das madrinhas traz a chave (#k=…): guarda no aparelho e tira do endereço, para não aparecer na tela
-  const k = chaveDoEndereco(location.hash);
-  if (k) {
-    guardarChave(k);
-    history.replaceState(null, '', location.pathname + location.search + '#/');
-  }
+  lerChaveDoEndereco();
   await carregarDoAparelho();
   aoMudar(() => (atual?.atualizar ? atual.atualizar() : atual && atual.montar(parse(), raiz)));
-  window.addEventListener('hashchange', mostrar);
+  window.addEventListener('hashchange', () => {
+    // o link das madrinhas aberto numa aba que já estava no app só muda o fim do endereço (a página não recarrega)
+    if (lerChaveDoEndereco()) carregar();
+    mostrar();
+  });
   mostrar();
   iniciarFila();
   await carregar();

@@ -23,6 +23,15 @@ export const marcarFita2Ouvida = () => {
   }
 };
 
+/** Zerar o placar recomeça a brincadeira: a senha volta a aparecer só quando a fita 2 terminar de novo. */
+export const esquecerFita2Ouvida = () => {
+  try {
+    localStorage.removeItem(OUVIDA);
+  } catch {
+    /* nada a esquecer */
+  }
+};
+
 const endereco = () => APP_URL.replace(/^https?:\/\//, '') + 'noivo';
 
 function pronto(): string {
@@ -51,6 +60,20 @@ function formulario(): string {
 let trocando = false;
 export function painelSenha(): string {
   return estado.senhaCriada && !trocando ? pronto() : formulario();
+}
+
+/**
+ * Redesenha a caixa quando o estado mudou (ex.: o Drive avisou que a senha já existe),
+ * mas nunca no meio da digitação.
+ */
+export function atualizarSenha(caixa: HTMLElement) {
+  const campo = caixa.querySelector<HTMLInputElement>('#senha-noiva');
+  if (campo && (campo.value || document.activeElement === campo)) return;
+  const novo = painelSenha();
+  if (caixa.dataset.html !== novo) {
+    caixa.innerHTML = novo;
+    caixa.dataset.html = novo;
+  }
 }
 
 /** Liga o formulário dentro do contêiner (a tela redesenha o contêiner quando o estado muda). */
