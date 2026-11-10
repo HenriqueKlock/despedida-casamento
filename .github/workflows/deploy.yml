@@ -27,7 +27,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
-      - name: Segurança (caixa preta: nada da surpresa no que é público)
+      - name: "Segurança: caixa preta, nada da surpresa no que é público"
         run: node tests/blackbox.mjs dist
       - uses: actions/upload-pages-artifact@v3
         with:
