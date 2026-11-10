@@ -1,7 +1,8 @@
 // Regras sem tela (testadas em tests/regras.test.ts): lista de perguntas, ligação pergunta ↔ áudio, nomes e placar.
 
 export interface AudioInfo { id: string; nome: string; mime: string; tamanho: number; criado: string; alterado: string }
-export interface Faixa { n: number; pergunta: string; audio: AudioInfo | null }
+/** Uma pergunta e o(s) áudio(s) do noivo para ela, na ordem (ex.: pergunta-10.ogg e depois pergunta-10-1.ogg). */
+export interface Faixa { n: number; pergunta: string; audios: AudioInfo[] }
 export type Resultado = 'match' | 'sem_match';
 
 /** Dois dígitos: 4 → "04". */
@@ -15,7 +16,9 @@ const NUMERACAO = /^\s*(?:pergunta\s*)?(\d{1,3})\s*(?:[.)\-–—:ºª°]+|\s)\s
  */
 export function lerPerguntas(texto: string): { n: number; pergunta: string }[] {
   const linhas = texto
-    .replace(/\r/g, '')
+    .replace(/^[﻿�]+/, '')
+    .replace(/\u0000/g, '')
+    .replace(/\r\n?/g, '\n')
     .split('\n')
     .map((l) => l.replace(/^[\s•*·\-–—]+(?=\S)/, (m) => (/\d/.test(m) ? m : '')).trim())
     .filter((l) => l.length > 0);
@@ -32,39 +35,60 @@ export function lerPerguntas(texto: string): { n: number; pergunta: string }[] {
   return linhas.map((pergunta, i) => ({ n: i + 1, pergunta }));
 }
 
-/** Número no começo do nome do arquivo ("03 - viagem.ogg" → 3). Datas como "2026-11-09…" não contam. */
-export function numeroNoNome(nome: string): number | null {
-  const m = nome.match(/^\s*(?:faixa|pergunta|p)?\s*[_\- ]?\s*(\d{1,3})(?!\d)/i);
-  return m ? Number(m[1]) : null;
+/**
+ * Número da pergunta no começo do nome do arquivo, e a parte quando a resposta veio em mais de um áudio:
+ * "pergunta-10.ogg" → 10 parte 0 · "pergunta-10-1.ogg" → 10 parte 1 · "03 - viagem.ogg" → 3.
+ * Datas como "2026-11-09…" não contam.
+ */
+export function numeroNoNome(nome: string): { n: number; parte: number } | null {
+  const base = nome.replace(/\.[a-z0-9]{2,5}$/i, '');
+  const m = base.match(/^\s*(?:faixa|pergunta|resposta|p)?\s*[_\- ]?\s*(\d{1,3})(?!\d)(.*)$/i);
+  if (!m) return null;
+  const p = m[2].match(/^\s*(?:[-_ ]+\s*(?:parte|pt|p)?\s*(\d{1,2})|\s*\((\d{1,2})\))\s*$/i);
+  return { n: Number(m[1]), parte: p ? Number(p[1] ?? p[2]) : 0 };
 }
 
 const compararNomes = (a: AudioInfo, b: AudioInfo) =>
   a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true, sensitivity: 'base' }) || a.criado.localeCompare(b.criado);
 
 /**
- * Liga cada pergunta ao seu áudio.
- * - Todos os áudios com número no nome (sem repetir): pelo número.
- * - Senão: pela ordem dos nomes (nomes do WhatsApp têm data e hora, então a ordem é a da gravação).
+ * Liga cada pergunta aos seus áudios.
+ * - Áudios com número no nome: pelo número (mais de um áudio com o mesmo número tocam em sequência, pela parte).
+ *   Os sem número viram faixa bônus.
+ * - Nenhum com número: pela ordem dos nomes (nomes do WhatsApp têm data e hora, então a ordem é a da gravação).
  */
 export function mapearFaixas(perguntas: { n: number; pergunta: string }[], audios: AudioInfo[]) {
   const avisos: string[] = [];
   const numeros = audios.map((a) => numeroNoNome(a.nome));
-  const porNumero = audios.length > 0 && numeros.every((x) => x !== null) && new Set(numeros).size === audios.length;
+  const porNumero = numeros.some((x) => x !== null);
   let faixas: Faixa[];
+  let extras: AudioInfo[] = [];
   if (porNumero) {
-    const mapa = new Map(audios.map((a, i) => [numeros[i]!, a]));
-    faixas = perguntas.map((p) => ({ ...p, audio: mapa.get(p.n) ?? null }));
-    const sobrando = audios.filter((_, i) => !perguntas.some((p) => p.n === numeros[i]));
-    if (sobrando.length) avisos.push(`${sobrando.length} áudio(s) com número sem pergunta: ${sobrando.map((a) => a.nome).join(', ')}`);
+    const grupos = new Map<number, { a: AudioInfo; parte: number }[]>();
+    audios.forEach((a, i) => {
+      const x = numeros[i];
+      if (!x) return extras.push(a);
+      grupos.set(x.n, [...(grupos.get(x.n) ?? []), { a, parte: x.parte }]);
+    });
+    faixas = perguntas.map((p) => ({
+      ...p,
+      audios: (grupos.get(p.n) ?? []).sort((x, y) => x.parte - y.parte || compararNomes(x.a, y.a)).map((x) => x.a),
+    }));
+    const sobrando = [...grupos.keys()].filter((k) => !perguntas.some((p) => p.n === k)).sort((a, b) => a - b);
+    if (sobrando.length) avisos.push(`Áudio sem pergunta: ${sobrando.map((k) => grupos.get(k)!.map((x) => x.a.nome).join(', ')).join(', ')}`);
+    const varios = faixas.filter((f) => f.audios.length > 1);
+    if (varios.length) avisos.push(`Tocam em sequência: ${varios.map((f) => f.audios.map((a) => a.nome).join(' + ')).join(' · ')}`);
+    extras = extras.sort(compararNomes);
+    if (extras.length) avisos.push(`Faixa bônus (no fim): ${extras.map((a) => a.nome).join(', ')}`);
   } else {
     const ordenados = [...audios].sort(compararNomes);
-    faixas = perguntas.map((p, i) => ({ ...p, audio: ordenados[i] ?? null }));
+    faixas = perguntas.map((p, i) => ({ ...p, audios: ordenados[i] ? [ordenados[i]] : [] }));
     if (audios.length) avisos.push('Áudios ligados às perguntas pela ordem dos nomes dos arquivos');
     if (ordenados.length > perguntas.length) avisos.push(`${ordenados.length - perguntas.length} áudio(s) sobrando no fim da lista`);
   }
-  const sem = faixas.filter((f) => !f.audio).map((f) => dois(f.n));
+  const sem = faixas.filter((f) => !f.audios.length).map((f) => dois(f.n));
   if (sem.length) avisos.push(`Sem áudio do noivo: faixa ${sem.join(', ')}`);
-  return { faixas, porNumero, avisos };
+  return { faixas, extras, porNumero, avisos };
 }
 
 /** Tipo de áudio sem os parâmetros, com os .ogg do WhatsApp reconhecidos pelo nome. */

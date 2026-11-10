@@ -1,5 +1,5 @@
 import { NOIVA } from '../config';
-import { audioDoNoivo, estado, faixa, guardarResposta } from '../estado';
+import { audiosDoNoivo, chaveDaFita, estado, faixa, guardarResposta } from '../estado';
 import * as fita from '../fita';
 import { gravar, podeGravar, type Gravacao } from '../gravador';
 import { dois, tempo } from '../regras';
@@ -95,18 +95,19 @@ async function pararGravacao() {
 
 function prepararDela() {
   const g = estado.gravacoes.get(n);
-  if (g) fita.preparar('noiva', g.id, g.blob, g.mime, g.nome).catch(() => {});
+  if (g) fita.preparar('noiva', g.id, [g]).catch(() => {});
 }
 
 async function prepararDele() {
-  const a = await audioDoNoivo(n);
-  if (a) await fita.preparar('noivo', a.id, a.blob, a.mime, a.nome).catch(() => {});
+  const f = faixa(n);
+  if (!f?.audios.length) return;
+  await fita.preparar('noivo', chaveDaFita(f.audios), await audiosDoNoivo(n)).catch(() => {});
 }
 
 function liberar() {
   const f = faixa(n);
   // dentro do clique: o navegador deixa a fita do noivo começar a tocar
-  if (f?.audio && fita.pronta('noivo', f.audio.id)) fita.tocarDoComeco('noivo').catch(() => {});
+  if (f?.audios.length && fita.pronta('noivo', chaveDaFita(f.audios))) fita.tocarDoComeco('noivo').catch(() => {});
   go(`tocar/${n}`);
 }
 

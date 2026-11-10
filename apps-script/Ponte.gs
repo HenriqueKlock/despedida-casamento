@@ -10,6 +10,7 @@
  * A ponte só entrega arquivos que estão dentro da pasta, mesmo para quem tem a chave.
  */
 
+const VERSAO = 2;
 const PASTA_ID = '1tmibKHjdz8kiiZCF3KvU2EPSCS01W3je';
 const APP_URL = 'https://henriqueklock.github.io/despedida-casamento/';
 const PASTA_RESPOSTAS = 'Respostas da Fernanda';
@@ -31,16 +32,21 @@ function gerarChave() {
 /** Mostra no registro o que a ponte enxerga na pasta, para conferir antes da festa. */
 function conferirPasta() {
   const d = lista_();
-  Logger.log('Pasta: ' + d.pasta);
+  Logger.log('Ponte versão ' + VERSAO + ' · pasta: ' + d.pasta);
   Logger.log('Lista de perguntas: ' + (d.lista ? d.lista.nome : 'NÃO ENCONTRADA'));
-  if (d.lista) Logger.log(d.lista.texto.split('\n').slice(0, 5).join('\n') + '\n…');
+  if (d.lista) {
+    const linhas = d.lista.texto.replace(/\r\n?/g, '\n').split('\n').map(function (l) { return l.trim(); }).filter(String);
+    const numeradas = linhas.filter(function (l) { return /^\s*(pergunta\s*)?\d{1,3}\s*([.)\-–—:ºª°]+|\s)/i.test(l); });
+    Logger.log(d.lista.texto.length + ' caracteres · ' + linhas.length + ' linha(s) com texto · ' + numeradas.length + ' numerada(s)\n' +
+      'Primeiras: \n' + linhas.slice(0, 3).join('\n') + '\n…\nÚltima: ' + linhas[linhas.length - 1]);
+  }
   Logger.log(d.audios.length + ' áudio(s):\n' + d.audios.map(function (a) { return '- ' + a.nome + ' (' + a.mime + ', ' + Math.round(a.tamanho / 1024) + ' KB)'; }).join('\n'));
 }
 
 /* ---------- app da Web ---------- */
 
 function doGet() {
-  return json_({ ok: true, dados: 'ponte da despedida no ar' });
+  return json_({ ok: true, dados: 'ponte da despedida no ar', versao: VERSAO });
 }
 
 function doPost(e) {
@@ -123,9 +129,27 @@ function lerLista_(arquivos) {
     const valores = SpreadsheetApp.openById(f.getId()).getSheets()[0].getDataRange().getDisplayValues();
     texto = valores.map(function (linha) { return linha[0]; }).join('\n');
   } else {
-    texto = f.getBlob().getDataAsString('UTF-8');
+    texto = textoDoArquivo_(f);
   }
   return { id: f.getId(), nome: f.getName(), alterado: f.getLastUpdated().toISOString(), texto: texto };
+}
+
+/** .txt salvo em qualquer codificação: UTF-8 (com ou sem BOM), UTF-16 (Bloco de Notas "Unicode") ou Windows-1252. */
+function textoDoArquivo_(f) {
+  const bytes = f.getBlob().getBytes();
+  const b = function (i) { return i < bytes.length ? bytes[i] & 255 : -1; };
+  let cs = 'UTF-8';
+  if (b(0) === 0xff && b(1) === 0xfe) cs = 'UTF-16LE';
+  else if (b(0) === 0xfe && b(1) === 0xff) cs = 'UTF-16BE';
+  else {
+    let pares = 0, impares = 0;
+    for (let i = 0; i < Math.min(bytes.length, 400); i++) if (bytes[i] === 0) (i % 2 ? impares++ : pares++);
+    if (impares > 10) cs = 'UTF-16LE';
+    else if (pares > 10) cs = 'UTF-16BE';
+  }
+  let texto = Utilities.newBlob(bytes).getDataAsString(cs);
+  if (cs === 'UTF-8' && texto.indexOf('�') >= 0) texto = Utilities.newBlob(bytes).getDataAsString('windows-1252');
+  return texto.replace(/^﻿/, '');
 }
 
 /** Um áudio do noivo, em base64. Só entrega arquivos que estão dentro da pasta. */

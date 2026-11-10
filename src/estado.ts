@@ -1,6 +1,6 @@
 import { ErroDeRede, lerChave, ponte, type ListaBruta } from './ponte';
-import { lerPerguntas, mapearFaixas, nomeDaResposta, type Faixa, type Resultado } from './regras';
-import { db, gravacoesPorFaixa, type Gravacao, type Marcacao } from './store';
+import { lerPerguntas, mapearFaixas, nomeDaResposta, type AudioInfo, type Faixa, type Resultado } from './regras';
+import { db, gravacoesPorFaixa, type AudioGuardado, type Gravacao, type Marcacao } from './store';
 
 // Estado do app na festa. As telas leem daqui e se redesenham quando algo muda.
 
@@ -13,6 +13,8 @@ export interface Estado {
   baixados: number;
   totalAudios: number;
   faixas: Faixa[];
+  /** áudios sem número no nome: faixa bônus, no fim */
+  extras: AudioInfo[];
   avisos: string[];
   resultados: Map<number, Resultado>;
   marcacoes: Map<number, Marcacao>;
@@ -24,7 +26,7 @@ export interface Estado {
 }
 
 export const estado: Estado = {
-  carga: 'carregando', erro: null, semDrive: false, baixados: 0, totalAudios: 0, faixas: [], avisos: [],
+  carga: 'carregando', erro: null, semDrive: false, baixados: 0, totalAudios: 0, faixas: [], extras: [], avisos: [],
   resultados: new Map(), marcacoes: new Map(), gravacoes: new Map(), naFila: 0, respostasNoDrive: 0, recusadas: 0,
 };
 
@@ -45,6 +47,7 @@ function aplicarLista(l: ListaBruta) {
   const perguntas = l.lista ? lerPerguntas(l.lista.texto) : [];
   const m = mapearFaixas(perguntas, l.audios);
   estado.faixas = m.faixas;
+  estado.extras = m.extras;
   estado.avisos = l.lista ? m.avisos : ['Não achei a lista de perguntas na pasta do Drive'];
 }
 
@@ -55,20 +58,20 @@ const base64ParaBlob = (b64: string, mime: string) => {
   return new Blob([bytes], { type: mime });
 };
 
+const todosOsAudios = () => [...estado.faixas.flatMap((f) => f.audios), ...estado.extras];
+
 async function audiosFaltando() {
-  const faltam: Faixa['audio'][] = [];
-  for (const f of estado.faixas) {
-    if (!f.audio) continue;
-    const g = await db.audios.get(f.audio.id);
-    if (!g || g.alterado !== f.audio.alterado) faltam.push(f.audio);
+  const faltam: AudioInfo[] = [];
+  for (const a of todosOsAudios()) {
+    const g = await db.audios.get(a.id);
+    if (!g || g.alterado !== a.alterado) faltam.push(a);
   }
-  return faltam.filter((a): a is NonNullable<typeof a> => !!a);
+  return faltam;
 }
 
 async function contarBaixados() {
-  const comAudio = estado.faixas.filter((f) => f.audio);
-  estado.totalAudios = comAudio.length;
-  estado.baixados = comAudio.length - (await audiosFaltando()).length;
+  estado.totalAudios = todosOsAudios().length;
+  estado.baixados = estado.totalAudios - (await audiosFaltando()).length;
 }
 
 let carregando: Promise<void> | null = null;
@@ -127,10 +130,16 @@ async function rodarCarga() {
   mudou();
 }
 
-export async function audioDoNoivo(n: number) {
-  const f = faixa(n);
-  return f?.audio ? ((await db.audios.get(f.audio.id)) ?? null) : null;
+/** Chave da fita de uma faixa (muda se algum áudio dela mudar). */
+export const chaveDaFita = (audios: AudioInfo[]) => audios.map((a) => a.id + '@' + a.alterado).join('+');
+
+async function guardados(audios: AudioInfo[]): Promise<AudioGuardado[]> {
+  const gs = await Promise.all(audios.map((a) => db.audios.get(a.id)));
+  return gs.filter((g): g is AudioGuardado => !!g);
 }
+/** As partes da resposta do noivo para a faixa, na ordem. */
+export const audiosDoNoivo = (n: number) => guardados(faixa(n)?.audios ?? []);
+export const audiosBonus = () => guardados(estado.extras);
 
 /* ---------- respostas da noiva e placar ---------- */
 

@@ -21,7 +21,11 @@ Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique
   - `resposta`: salva a gravação da noiva em **Respostas da Fernanda** (subpasta), com nome do tipo `04 - O que ele mais admira na Fernanda.m4a`. Regravar gera um arquivo novo (`(2)`), e o primeiro continua lá.
   - `placar`: acrescenta uma linha na planilha **Placar da despedida**, na mesma pasta.
   - Nada responde sem a **chave**, guardada nas Propriedades do script. Ela vai só no link das madrinhas, nunca no repositório. O app tira a chave do endereço assim que abre.
-- **Ligação pergunta ↔ áudio:** se todos os áudios começam com o número da pergunta (`01.ogg`, `3 - viagem.ogg`), vale o número. Se não (nomes do WhatsApp), vale a ordem dos nomes, que é a ordem da gravação. A tela de faixas tem uma "Conferência da fita" que avisa se faltar ou sobrar áudio.
+- **Ligação pergunta ↔ áudio:** o número no nome do arquivo manda (`pergunta-7.ogg`, `01.ogg`, `3 - viagem.ogg`).
+  - Resposta em mais de um áudio: `pergunta-10.ogg` e depois `pergunta-10-1.ogg` (ou `(2)`, `parte 2`) viram uma fita só, com uma pausa curta entre as partes.
+  - Áudio sem número (ex.: `extra.ogg`) vira a **faixa bônus**, que aparece no fim, sem placar.
+  - Nenhum áudio com número (nomes do WhatsApp): vale a ordem dos nomes, que é a ordem da gravação.
+  - A tela de faixas tem uma "Conferência da fita" que avisa se faltar ou sobrar áudio.
 - **Surpresa:** perguntas e áudios nunca entram no repositório nem no build (o `.gitignore` bloqueia áudio). Quem abre o endereço sem a chave vê só "Abra pelo link que as madrinhas receberam".
 
 ## Configuração (uma vez, pelo Henrique)

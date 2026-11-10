@@ -19,7 +19,7 @@ import type { TelaApp } from './screens/tipos';
 
 registerSW({ immediate: true });
 
-const telas: Record<Tela, TelaApp> = { capa, faixas, faixa: pergunta, tocar, fim };
+const telas: Record<Tela, TelaApp> = { capa, faixas, faixa: pergunta, tocar, bonus: tocar, fim };
 const raiz = document.getElementById('app')!;
 let atual: TelaApp | null = null;
 

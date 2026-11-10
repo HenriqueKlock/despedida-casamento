@@ -1,15 +1,17 @@
 import { NOIVA, NOIVO } from '../config';
-import { audioDoNoivo, estado, faixa, marcar } from '../estado';
+import { audiosBonus, audiosDoNoivo, chaveDaFita, estado, faixa, marcar } from '../estado';
 import * as fita from '../fita';
-import { dois, placar, tempo, type Resultado } from '../regras';
+import { dois, placar, tempo, type AudioInfo, type Resultado } from '../regras';
 import { go, type Rota } from '../router';
 import { fitaSvg, icone, moverFita } from '../svg';
 import { esc } from '../ui';
 import type { TelaApp } from './tipos';
 
 // A fita do noivo tocando no deck. Depois, a madrinha marca se deu match.
+// #/bonus usa o mesmo deck para a faixa bônus (áudios sem número), sem placar.
 
 let n = 0;
+let bonus = false;
 let ativo: fita.Lado = 'noivo';
 let soltar: (() => void) | null = null;
 
@@ -78,25 +80,39 @@ function botoesMatch(): string {
     <button type="button" class="botao sem-match" data-acao="sem_match" aria-pressed="${r === 'sem_match'}">${icone.x}NÃO DEU MATCH</button>`;
 }
 
+/** Deixa a fita pronta e tenta tocar (se o navegador barrar, a tecla TOCAR resolve). */
+function carregarETocar(audios: AudioInfo[], buscar: () => Promise<fita.Parte[]>) {
+  const chave = chaveDaFita(audios);
+  if (!audios.length || fita.pronta('noivo', chave)) return;
+  const rota = location.hash;
+  buscar().then(async (partes) => {
+    await fita.preparar('noivo', chave, partes);
+    if (location.hash !== rota) return;
+    fita.tocarDoComeco('noivo').catch(() => {});
+    atualizarDeck();
+  });
+}
+
 export const tocar: TelaApp = {
   montar(r: Rota, raiz) {
-    const f = r.n ? faixa(r.n) : null;
-    if (!f) return go(estado.faixas.length ? 'faixas' : '', true);
-    n = f.n;
+    bonus = r.tela === 'bonus';
+    const f = bonus ? null : r.n ? faixa(r.n) : null;
+    if (bonus ? !estado.extras.length : !f) return go(estado.faixas.length ? 'faixas' : '', true);
+    n = f?.n ?? 0;
     ativo = 'noivo';
-    const temAudio = !!f.audio;
-    const dela = estado.gravacoes.get(n);
+    const audios = bonus ? estado.extras : f!.audios;
+    const dela = bonus ? undefined : estado.gravacoes.get(n);
     raiz.innerHTML = `<section class="tela tela-tocar">
       <header class="topo">
-        <span class="ao-vivo"><span class="led" aria-hidden="true"></span>TOCANDO · FAIXA ${dois(n)}</span>
-        <a class="voltar claro" href="#/faixas">${icone.voltar}Faixas</a>
+        <span class="ao-vivo"><span class="led" aria-hidden="true"></span>TOCANDO · ${bonus ? 'FAIXA BÔNUS' : `FAIXA ${dois(n)}`}</span>
+        <a class="voltar claro" href="${bonus ? '#/fim' : '#/faixas'}">${icone.voltar}${bonus ? 'Placar' : 'Faixas'}</a>
       </header>
       <div class="miolo">
         <div class="coluna-texto">
-          <p class="pergunta clara">${esc(f.pergunta)}</p>
+          <p class="pergunta clara">${bonus ? `Um recado do ${esc(NOIVO)} pra ${esc(NOIVA)}` : esc(f!.pergunta)}</p>
         </div>
         <div class="coluna-deck">
-          <div class="deck">${fitaSvg({ titulo: `Resposta do ${NOIVO}`, corpo: 'claro', progresso: 0, lacre: temAudio ? null : 'SEM ÁUDIO NESTA FAIXA' })}</div>
+          <div class="deck">${fitaSvg({ titulo: bonus ? `Recado do ${NOIVO}` : `Resposta do ${NOIVO}`, corpo: 'claro', progresso: 0, lado: bonus ? 'B' : 'A', lacre: audios.length ? null : 'SEM ÁUDIO NESTA FAIXA' })}</div>
           <div class="progresso">
             <span id="t-atual">0:00</span>
             <div class="trilho" role="progressbar" aria-label="Andamento da fita" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="barra"></span></div>
@@ -105,27 +121,19 @@ export const tocar: TelaApp = {
           <div class="teclas">${teclas()}</div>
           ${dela ? `<button type="button" class="link claro" data-acao="ouvir-dela">Ouvir a resposta dela</button>` : ''}
         </div>
-        <div class="coluna-match">
+        ${bonus ? '' : `<div class="coluna-match">
           <p class="pergunta-match">E aí, deu match?</p>
           <div class="duas">${botoesMatch()}</div>
-        </div>
+        </div>`}
       </div>
     </section>`;
     const tela = raiz.querySelector<HTMLElement>('.tela-tocar')!;
     tela.addEventListener('click', clique);
-    if (!temAudio) tela.querySelectorAll<HTMLButtonElement>('.teclas button').forEach((b) => (b.disabled = true));
+    if (!audios.length) tela.querySelectorAll<HTMLButtonElement>('.teclas button').forEach((b) => (b.disabled = true));
     soltar = fita.aoTocar(atualizarDeck);
     atualizarDeck();
-    if (dela) fita.preparar('noiva', dela.id, dela.blob, dela.mime, dela.nome).catch(() => {});
-    if (temAudio && !fita.pronta('noivo', f.audio!.id)) {
-      // chegou direto (recarregou a página): prepara e tenta tocar; se o navegador barrar, a tecla TOCAR resolve
-      audioDoNoivo(n).then(async (a) => {
-        if (!a || n !== f.n) return;
-        await fita.preparar('noivo', a.id, a.blob, a.mime, a.nome);
-        fita.tocarDoComeco('noivo').catch(() => {});
-        atualizarDeck();
-      });
-    }
+    if (dela) fita.preparar('noiva', dela.id, [dela]).catch(() => {});
+    carregarETocar(audios, bonus ? audiosBonus : () => audiosDoNoivo(n));
   },
   atualizar() {
     const d = document.querySelector('.tela-tocar .duas');

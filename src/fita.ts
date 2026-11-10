@@ -23,24 +23,58 @@ function forcarDecodificador() {
   }
 }
 
-async function tocavel(chave: string, blob: Blob, mime: string, nome: string): Promise<Blob> {
-  const tipo = tipoDoAudio(mime, nome);
-  if (tipo !== 'audio/ogg') return blob;
-  const sabe = players.noivo.canPlayType('audio/ogg; codecs="opus"');
-  if (sabe && !forcarDecodificador()) return new Blob([blob], { type: 'audio/ogg' });
+export interface Parte { blob: Blob; mime: string; nome: string }
+interface Pcm { canais: Float32Array[]; taxa: number }
+
+async function decodificar(p: Parte): Promise<Pcm> {
+  if (tipoDoAudio(p.mime, p.nome) === 'audio/ogg') {
+    const { OggOpusDecoder } = await import('ogg-opus-decoder');
+    const dec = new OggOpusDecoder();
+    await dec.ready;
+    try {
+      const r = await dec.decodeFile(new Uint8Array(await p.blob.arrayBuffer()));
+      return { canais: r.channelData, taxa: r.sampleRate };
+    } finally {
+      dec.free();
+    }
+  }
+  const ctx = new AudioContext();
+  try {
+    const buf = await ctx.decodeAudioData(await p.blob.arrayBuffer());
+    return { canais: Array.from({ length: buf.numberOfChannels }, (_, i) => buf.getChannelData(i)), taxa: buf.sampleRate };
+  } finally {
+    ctx.close().catch(() => {});
+  }
+}
+
+/** Junta as partes numa fita só, com uma pausa curta entre elas (ex.: pergunta-10 + pergunta-10-1). */
+function juntar(pcms: Pcm[]): Pcm {
+  const taxa = pcms[0].taxa;
+  const pausa = Math.round(taxa * 0.4);
+  const nCanais = Math.max(...pcms.map((p) => p.canais.length));
+  const total = pcms.reduce((s, p) => s + p.canais[0].length, 0) + pausa * (pcms.length - 1);
+  const canais = Array.from({ length: nCanais }, () => new Float32Array(total));
+  let o = 0;
+  for (const p of pcms) {
+    for (let c = 0; c < nCanais; c++) canais[c].set(p.canais[Math.min(c, p.canais.length - 1)], o);
+    o += p.canais[0].length + pausa;
+  }
+  return { canais, taxa };
+}
+
+async function tocavel(chave: string, partes: Parte[]): Promise<Blob> {
   const pronto = decodificados.get(chave);
   if (pronto) return pronto;
-  const { OggOpusDecoder } = await import('ogg-opus-decoder');
-  const dec = new OggOpusDecoder();
-  await dec.ready;
-  try {
-    const r = await dec.decodeFile(new Uint8Array(await blob.arrayBuffer()));
-    const wav = paraWav(r.channelData, r.sampleRate);
-    decodificados.set(chave, wav);
-    return wav;
-  } finally {
-    dec.free();
+  if (partes.length === 1) {
+    const p = partes[0];
+    if (tipoDoAudio(p.mime, p.nome) !== 'audio/ogg') return p.blob;
+    const sabe = players.noivo.canPlayType('audio/ogg; codecs="opus"');
+    if (sabe && !forcarDecodificador()) return new Blob([p.blob], { type: 'audio/ogg' });
   }
+  const pcm = juntar(await Promise.all(partes.map(decodificar)));
+  const wav = paraWav(pcm.canais, pcm.taxa);
+  decodificados.set(chave, wav);
+  return wav;
 }
 
 /** PCM em .wav de 16 bits (mono se a gravação for mono). */
@@ -74,9 +108,10 @@ function paraWav(canais: Float32Array[], taxa: number): Blob {
 }
 
 /** Deixa a fita no ponto, antes de alguém apertar o play (a decodificação acontece enquanto a noiva responde). */
-export async function preparar(lado: Lado, chave: string, blob: Blob, mime: string, nome: string) {
+export async function preparar(lado: Lado, chave: string, partes: Parte[]) {
+  if (carregado[lado] === chave || !partes.length) return;
+  const pronto = await tocavel(chave, partes);
   if (carregado[lado] === chave) return;
-  const pronto = await tocavel(chave, blob, mime, nome);
   if (urls[lado]) URL.revokeObjectURL(urls[lado]!);
   urls[lado] = URL.createObjectURL(pronto);
   players[lado].src = urls[lado]!;

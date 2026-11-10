@@ -39,7 +39,7 @@ body {
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
 }
-body[data-tela='tocar'] { background: var(--deck); color: var(--etiqueta); }
+body[data-tela='tocar'], body[data-tela='bonus'] { background: var(--deck); color: var(--etiqueta); }
 button { font: inherit; color: inherit; }
 a { color: var(--terracota); }
 :focus-visible { outline: 3px solid var(--mostarda); outline-offset: 3px; }
@@ -355,6 +355,7 @@ a { color: var(--terracota); }
 .frase { margin-top: 1.375rem; font-size: 0.9375rem; color: var(--tinta); max-width: 18rem; }
 .fita-fim { margin-top: 2rem; width: min(16.875rem, 100%); transform: rotate(3deg); filter: drop-shadow(0 0.625rem 0.875rem rgba(42, 36, 31, 0.25)); }
 .tela-fim .status-drive { margin-bottom: 0.875rem; }
+.botao.secundario.bonus { border-color: var(--terracota); color: var(--terracota); }
 
 /* ---------- aviso ---------- */
 #aviso {

@@ -30,10 +30,15 @@ test('lista: "Pergunta 2:" e números fora de ordem', () => {
 });
 
 test('número no nome do arquivo', () => {
-  assert.equal(numeroNoNome('03 - viagem.ogg'), 3);
-  assert.equal(numeroNoNome('12.ogg'), 12);
-  assert.equal(numeroNoNome('faixa_7.ogg'), 7);
-  assert.equal(numeroNoNome('P4.opus'), 4);
+  assert.deepEqual(numeroNoNome('03 - viagem.ogg'), { n: 3, parte: 0 });
+  assert.deepEqual(numeroNoNome('12.ogg'), { n: 12, parte: 0 });
+  assert.deepEqual(numeroNoNome('faixa_7.ogg'), { n: 7, parte: 0 });
+  assert.deepEqual(numeroNoNome('P4.opus'), { n: 4, parte: 0 });
+  assert.deepEqual(numeroNoNome('pergunta-29.ogg'), { n: 29, parte: 0 });
+  assert.deepEqual(numeroNoNome('pergunta-10-1.ogg'), { n: 10, parte: 1 });
+  assert.deepEqual(numeroNoNome('pergunta 10 (2).ogg'), { n: 10, parte: 2 });
+  assert.deepEqual(numeroNoNome('pergunta-10 parte 2.ogg'), { n: 10, parte: 2 });
+  assert.equal(numeroNoNome('extra.ogg'), null);
   assert.equal(numeroNoNome('WhatsApp Ptt 2026-11-09 at 21.15.03.ogg'), null);
   assert.equal(numeroNoNome('2026-11-09 audio.ogg'), null);
   assert.equal(numeroNoNome('PTT-20261109-WA0012.opus'), null);
@@ -42,8 +47,25 @@ test('número no nome do arquivo', () => {
 test('ligação pelo número', () => {
   const r = mapearFaixas(lerPerguntas('1. A\n2. B\n3. C'), [audio('2.ogg'), audio('1.ogg'), audio('3 - c.ogg')]);
   assert.equal(r.porNumero, true);
-  assert.deepEqual(r.faixas.map((f) => f.audio?.nome), ['1.ogg', '2.ogg', '3 - c.ogg']);
+  assert.deepEqual(r.faixas.map((f) => f.audios.map((a) => a.nome)), [['1.ogg'], ['2.ogg'], ['3 - c.ogg']]);
   assert.deepEqual(r.avisos, []);
+});
+
+test('a pasta do Henrique: duas partes na 10 e um extra', () => {
+  const nomes = ['extra.ogg', ...Array.from({ length: 29 }, (_, i) => `pergunta-${29 - i}.ogg`), 'pergunta-10-1.ogg'];
+  const perguntas = lerPerguntas(Array.from({ length: 29 }, (_, i) => `${i + 1}. Pergunta ${i + 1}?`).join('\n'));
+  const r = mapearFaixas(perguntas, nomes.map((n) => audio(n)));
+  assert.equal(r.faixas.length, 29);
+  assert.ok(r.faixas.every((f) => f.audios.length >= 1));
+  assert.deepEqual(r.faixas[9].audios.map((a) => a.nome), ['pergunta-10.ogg', 'pergunta-10-1.ogg']);
+  assert.deepEqual(r.faixas[0].audios.map((a) => a.nome), ['pergunta-1.ogg']);
+  assert.deepEqual(r.faixas[28].audios.map((a) => a.nome), ['pergunta-29.ogg']);
+  assert.deepEqual(r.extras.map((a) => a.nome), ['extra.ogg']);
+});
+
+test('lista em .txt com BOM, NUL de UTF-16 e quebras do Windows', () => {
+  assert.deepEqual(lerPerguntas('﻿1. Á?\r\n2. B?\r\n').map((x) => x.pergunta), ['Á?', 'B?']);
+  assert.deepEqual(lerPerguntas('��1\u0000.\u0000 \u0000A\u0000?\u0000').map((x) => x.pergunta), ['A?']);
 });
 
 test('ligação pela ordem dos nomes do WhatsApp (ordem da gravação)', () => {
@@ -53,7 +75,7 @@ test('ligação pela ordem dos nomes do WhatsApp (ordem da gravação)', () => {
     audio('WhatsApp Ptt 2026-11-09 at 21.15.03.ogg'),
   ]);
   assert.equal(r.porNumero, false);
-  assert.deepEqual(r.faixas.map((f) => f.audio?.nome), [
+  assert.deepEqual(r.faixas.map((f) => f.audios[0]?.nome), [
     'WhatsApp Ptt 2026-11-09 at 9.05.00.ogg',
     'WhatsApp Ptt 2026-11-09 at 21.15.03.ogg',
     'WhatsApp Ptt 2026-11-09 at 21.20.00.ogg',
@@ -63,15 +85,15 @@ test('ligação pela ordem dos nomes do WhatsApp (ordem da gravação)', () => {
 
 test('avisa pergunta sem áudio e áudio sobrando', () => {
   const r = mapearFaixas(lerPerguntas('1. A\n2. B'), [audio('1.ogg'), audio('5.ogg')]);
-  assert.equal(r.faixas[1].audio, null);
+  assert.deepEqual(r.faixas[1].audios, []);
   assert.ok(r.avisos.some((a) => a.includes('5.ogg')));
   assert.ok(r.avisos.some((a) => a.includes('faixa 02')));
 });
 
-test('número repetido cai para a ordem', () => {
-  const r = mapearFaixas(lerPerguntas('A\nB'), [audio('1 b.ogg'), audio('1 a.ogg')]);
-  assert.equal(r.porNumero, false);
-  assert.deepEqual(r.faixas.map((f) => f.audio?.nome), ['1 a.ogg', '1 b.ogg']);
+test('mesmo número sem parte: os dois tocam, na ordem do nome', () => {
+  const r = mapearFaixas(lerPerguntas('A\nB'), [audio('1 b.ogg'), audio('1 a.ogg'), audio('2.ogg')]);
+  assert.equal(r.porNumero, true);
+  assert.deepEqual(r.faixas.map((f) => f.audios.map((a) => a.nome)), [['1 a.ogg', '1 b.ogg'], ['2.ogg']]);
 });
 
 test('tipos e extensões', () => {

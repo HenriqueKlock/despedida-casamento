@@ -39,8 +39,13 @@ if (!PONTE) {
   }
   const errada = await chamar({ acao: 'lista', chave: 'f'.repeat(64) });
   !errada.ok && !errada.dados ? ok(`ponte lista: chave errada recusada (${errada.erro})`) : ruim('ponte lista: aceitou chave errada');
-  const get = await fetch(PONTE, { redirect: 'follow' }).then((r) => r.text()).catch(() => '');
-  /pergunta|audio|base64/i.test(get) ? ruim('ponte GET devolve dados') : ok('ponte GET não devolve dados');
+  const get = await fetch(PONTE, { redirect: 'follow' }).then((r) => r.text()).catch((e) => 'erro: ' + e.message);
+  let saude = null;
+  try { saude = JSON.parse(get); } catch { /* página do Google = implantação sem acesso público */ }
+  saude?.ok && saude.dados === 'ponte da despedida no ar'
+    ? ok(`ponte no ar e aberta para o app (versão ${saude.versao ?? 1})`)
+    : ruim('ponte não respondeu como app da Web público (conferir "Quem pode acessar: Qualquer pessoa"): ' + get.slice(0, 120));
+  /pergunta|base64/i.test(get) ? ruim('ponte GET devolve dados') : ok('ponte GET não devolve dados');
 }
 
 if (falhas) {

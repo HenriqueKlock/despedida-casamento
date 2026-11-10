@@ -25,9 +25,10 @@ export const ponteDeTeste: Ponte = {
     return {
       pasta: 'Despedida (teste)',
       lista: { id: 'lista', nome: 'Perguntas', alterado: '2026-11-09T21:00:00Z', texto: 'Perguntas pro noivo\n' + perguntas.map((p, i) => `${i + 1}. ${p}`).join('\n') },
-      audios: perguntas.map((_, i) => ({
-        id: 'audio-' + (i + 1),
-        nome: `WhatsApp Ptt 2026-11-09 at 21.${String(10 + i).padStart(2, '0')}.00.ogg`,
+      // como na pasta do Henrique: pergunta-N.ogg, uma resposta em duas partes e um extra sem número
+      audios: [...perguntas.map((_, i) => `pergunta-${i + 1}.ogg`), 'pergunta-3-1.ogg', 'extra.ogg'].map((nome) => ({
+        id: 'audio-' + nome.replace('.ogg', ''),
+        nome,
         mime: 'audio/ogg',
         tamanho: 10089,
         criado: '2026-11-09T21:00:00Z',
