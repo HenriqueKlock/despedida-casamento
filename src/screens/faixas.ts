@@ -48,7 +48,7 @@ function html(): string {
   return `<section class="tela tela-faixas">
     <header class="cabeca-faixas">
       <div>
-        <p class="sobre">LADO A</p>
+        <p class="sobre">FITA DA DESPEDIDA</p>
         <h1 class="titulo-faixas">Faixas</h1>
       </div>
       <div class="contador" aria-label="${p.tocadas} de ${p.total} faixas tocadas">${contador(p.tocadas)}<span class="barra-contador">/</span>${contador(p.total)}</div>

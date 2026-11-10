@@ -5,7 +5,10 @@ import { esc } from './ui';
 
 export interface OpcoesFita {
   titulo: string;
-  lado?: 'A' | 'B';
+  /** lado da fita (A, B) ou número da fita (2); '' esconde */
+  lado?: string;
+  /** cor do corpo da fita, no lugar de corpo */
+  cor?: string;
   corpo?: 'escuro' | 'claro';
   faixas?: [string, string];
   /** 0 = toda a fita no carretel da esquerda, 1 = toda na direita */
@@ -29,7 +32,7 @@ const carretel = (cx: number) =>
   `<g class="carretel" style="transform-origin:${cx}px 102px"><circle cx="${cx}" cy="102" r="11" fill="#F6EFDF"/><circle cx="${cx}" cy="102" r="4" fill="#1B1714"/><path d="${raiosDoCubo(cx)}" stroke="#1B1714" stroke-width="2.5" stroke-linecap="round"/></g>`;
 
 export function fitaSvg(o: OpcoesFita): string {
-  const corpo = o.corpo === 'claro' ? '#4A4038' : '#2A241F';
+  const corpo = o.cor ?? (o.corpo === 'claro' ? '#4A4038' : '#2A241F');
   const furos = o.corpo === 'claro' ? '#2A241F' : '#4A4038';
   const [f1, f2] = o.faixas ?? ['#B5542A', '#D9A441'];
   const r = raios(o.progresso ?? 0.15);
@@ -43,7 +46,7 @@ export function fitaSvg(o: OpcoesFita): string {
 <rect x="20" y="22" width="280" height="9" fill="${f1}"/>
 <rect x="20" y="31" width="280" height="6" fill="${f2}"/>
 <text x="32" y="62" font-family="Caveat, cursive" font-size="25" font-weight="700" fill="#2A241F">${esc(o.titulo)}</text>
-<text x="288" y="62" text-anchor="end" font-family="'Special Elite', monospace" font-size="18" fill="#B5542A">${o.lado ?? 'A'}</text>
+${o.lado === '' ? '' : `<text x="288" y="62" text-anchor="end" font-family="'Special Elite', monospace" font-size="18" fill="#B5542A">${o.lado ?? 'A'}</text>`}
 <line x1="32" y1="68" x2="288" y2="68" stroke="#C9BBA0" stroke-width="1"/>
 <rect x="72" y="76" width="176" height="52" rx="26" fill="#1B1714"/>
 <circle class="r-esq" cx="114" cy="102" r="${r.esq.toFixed(1)}" fill="#5A3B25"/>
@@ -64,6 +67,9 @@ export function moverFita(svg: SVGSVGElement | null, progresso: number) {
   svg.querySelector('.r-esq')?.setAttribute('r', r.esq.toFixed(1));
   svg.querySelector('.r-dir')?.setAttribute('r', r.dir.toFixed(1));
 }
+
+/** A segunda fita (o recado extra do noivo): corpo terracota e etiqueta com outras listras. */
+export const FITA_2 = { cor: '#7A3519', faixas: ['#D9A441', '#2A241F'] as [string, string], lado: '2' };
 
 export const icone = {
   play: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 L20 12 L7 20 Z" fill="currentColor"/></svg>',

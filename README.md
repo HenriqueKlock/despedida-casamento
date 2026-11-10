@@ -1,6 +1,6 @@
 # Fita da despedida
 
-Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique, e ele respondeu em áudio pelo WhatsApp. Na festa, o app mostra uma pergunta por vez. A Fernanda responde em voz alta, a resposta dela é gravada e só depois a fita com a resposta do noivo destrava e toca. A madrinha marca se **deu match** ou **não deu match**, e no fim aparece o placar.
+Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique, e ele respondeu em áudio pelo WhatsApp. Na festa, o app mostra uma pergunta por vez. A fita tem dois lados: o **lado A** é a resposta do Henrique, e o **lado B** é a resposta da Fernanda, gravada na hora. A Fernanda responde em voz alta, a resposta dela é gravada e só depois a fita com a resposta do noivo destrava e toca. A madrinha marca se **deu match** ou **não deu match**, e no fim aparece o placar.
 
 - App: https://henriqueklock.github.io/despedida-casamento/ (as madrinhas entram só pelo link com a chave, `#k=…`).
 - Telas: canvas "Fita da Despedida" (mockup aprovado).
@@ -23,7 +23,7 @@ Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique
   - Nada responde sem a **chave**, guardada nas Propriedades do script. Ela vai só no link das madrinhas, nunca no repositório. O app tira a chave do endereço assim que abre.
 - **Ligação pergunta ↔ áudio:** o número no nome do arquivo manda (`pergunta-7.ogg`, `01.ogg`, `3 - viagem.ogg`).
   - Resposta em mais de um áudio: `pergunta-10.ogg` e depois `pergunta-10-1.ogg` (ou `(2)`, `parte 2`) viram uma fita só, com uma pausa curta entre as partes.
-  - Áudio sem número (ex.: `extra.ogg`) vira a **faixa bônus**, que aparece no fim, sem placar.
+  - Áudio sem número (ex.: `extra.ogg`) vira a **fita 2**, o recado do noivo. Ela só destrava quando todas as faixas tiverem resultado: na tela final, a fita 1 sai do toca-fitas e a fita 2 entra (animação), e aí aparece "Tocar a fita 2". Não tem placar.
   - Nenhum áudio com número (nomes do WhatsApp): vale a ordem dos nomes, que é a ordem da gravação.
   - A tela de faixas tem uma "Conferência da fita" que avisa se faltar ou sobrar áudio.
 - **Surpresa:** perguntas e áudios nunca entram no repositório nem no build (o `.gitignore` bloqueia áudio). Quem abre o endereço sem a chave vê só "Abra pelo link que as madrinhas receberam".

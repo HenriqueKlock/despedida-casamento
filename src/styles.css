@@ -430,3 +430,26 @@ a { color: var(--terracota); }
 .bonus-lacrado .ic { width: 1rem; height: 1rem; flex: none; }
 
 .aviso-mic { margin: -0.5rem 0 1rem; text-align: center; font-size: 0.8125rem; color: var(--terracota-escura); }
+
+/* fim com a fita 2: a fita 1 sai pela esquerda e a fita 2 entra pela direita, sem passar por cima do placar */
+.troca { position: relative; width: min(16.875rem, 100%); aspect-ratio: 320 / 204; margin-top: 2rem; }
+.troca > div { position: absolute; inset: 0; filter: drop-shadow(0 0.625rem 0.875rem rgba(42, 36, 31, 0.25)); }
+.fita-sai { transform: rotate(3deg); animation: fita-sai 0.9s cubic-bezier(0.5, 0, 0.75, 0) 0.7s both; }
+.fita-entra { animation: fita-entra 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.15) 1.5s both; }
+.fita-entra .carretel { animation: girar 4s linear 2.4s infinite; }
+.fita2-entra { animation: aparecer 0.4s ease 2.4s backwards; }
+@keyframes fita-sai {
+  0% { transform: rotate(3deg) translateY(0); opacity: 1; }
+  20% { transform: rotate(3deg) translateY(5%); opacity: 1; }
+  100% { transform: rotate(-10deg) translate(-140%, -8%); opacity: 0; }
+}
+@keyframes fita-entra {
+  0% { transform: rotate(10deg) translate(140%, -8%); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: rotate(-2deg) translate(0, 0); opacity: 1; }
+}
+@keyframes aparecer { from { opacity: 0; transform: translateY(0.5rem); } }
+@media (prefers-reduced-motion: reduce) {
+  .fita-sai { display: none; }
+  .fita-entra, .fita-entra .carretel, .fita2-entra { animation: none; }
+}

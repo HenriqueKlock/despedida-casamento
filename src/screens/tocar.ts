@@ -3,7 +3,7 @@ import { audiosBonus, audiosDoNoivo, chaveDaFita, estado, faixa, marcar } from '
 import * as fita from '../fita';
 import { dois, placar, tempo, type AudioInfo, type Resultado } from '../regras';
 import { go, type Rota } from '../router';
-import { fitaSvg, icone, moverFita } from '../svg';
+import { FITA_2, fitaSvg, icone, moverFita } from '../svg';
 import { esc } from '../ui';
 import type { TelaApp } from './tipos';
 
@@ -47,10 +47,12 @@ function trocarLado(lado: fita.Lado) {
   fita.pausarTudo();
   ativo = lado;
   const tela = document.querySelector('.tela-tocar');
-  const t = tela?.querySelector('.deck .fita text');
-  if (t) t.textContent = lado === 'noiva' ? `Resposta da ${NOIVA}` : `Resposta do ${NOIVO}`;
+  const deck = tela?.querySelector('.deck');
+  if (deck) deck.innerHTML = fitaSvg({ titulo: lado === 'noiva' ? `Resposta da ${NOIVA}` : `Resposta do ${NOIVO}`, corpo: 'claro', progresso: 0, lado: lado === 'noiva' ? 'B' : 'A' });
   const link = tela?.querySelector('[data-acao="ouvir-dela"]');
-  if (link) link.textContent = lado === 'noiva' ? 'Voltar pra fita do noivo' : 'Ouvir a resposta dela';
+  if (link) link.textContent = lado === 'noiva' ? `Virar pro lado A (${NOIVO})` : `Virar pro lado B (${NOIVA})`;
+  const vivo = tela?.querySelector('.ao-vivo-txt');
+  if (vivo) vivo.textContent = `TOCANDO · FAIXA ${dois(n)} · LADO ${lado === 'noiva' ? 'B' : 'A'}`;
 }
 
 async function clique(ev: Event) {
@@ -106,7 +108,7 @@ export const tocar: TelaApp = {
     const dela = bonus ? undefined : estado.gravacoes.get(n);
     raiz.innerHTML = `<section class="tela tela-tocar">
       <header class="topo">
-        <span class="ao-vivo"><span class="led" aria-hidden="true"></span>TOCANDO · ${bonus ? 'FAIXA BÔNUS' : `FAIXA ${dois(n)}`}</span>
+        <span class="ao-vivo"><span class="led" aria-hidden="true"></span><span class="ao-vivo-txt">TOCANDO · ${bonus ? 'FITA 2' : `FAIXA ${dois(n)} · LADO A`}</span></span>
         <a class="voltar claro" href="${bonus ? '#/fim' : '#/faixas'}">${icone.voltar}${bonus ? 'Placar' : 'Faixas'}</a>
       </header>
       <div class="miolo">
@@ -114,14 +116,16 @@ export const tocar: TelaApp = {
           <p class="pergunta clara">${bonus ? `Um recado do ${esc(NOIVO)} pra ${esc(NOIVA)}` : esc(f!.pergunta)}</p>
         </div>
         <div class="coluna-deck">
-          <div class="deck">${fitaSvg({ titulo: bonus ? `Recado do ${NOIVO}` : `Resposta do ${NOIVO}`, corpo: 'claro', progresso: 0, lado: bonus ? 'B' : 'A', lacre: audios.length ? null : 'SEM ÁUDIO NESTA FAIXA' })}</div>
+          <div class="deck">${bonus
+            ? fitaSvg({ titulo: `Recado do ${NOIVO}`, ...FITA_2, progresso: 0 })
+            : fitaSvg({ titulo: `Resposta do ${NOIVO}`, corpo: 'claro', progresso: 0, lado: 'A', lacre: audios.length ? null : 'SEM ÁUDIO NESTA FAIXA' })}</div>
           <div class="progresso">
             <span id="t-atual">0:00</span>
             <div class="trilho" role="progressbar" aria-label="Andamento da fita" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="barra"></span></div>
             <span id="t-total">0:00</span>
           </div>
           <div class="teclas">${teclas()}</div>
-          ${dela ? `<button type="button" class="link claro" data-acao="ouvir-dela">Ouvir a resposta dela</button>` : ''}
+          ${dela ? `<button type="button" class="link claro" data-acao="ouvir-dela">Virar pro lado B (${esc(NOIVA)})</button>` : ''}
         </div>
         ${bonus ? '' : `<div class="coluna-match">
           <p class="pergunta-match">E aí, deu match?</p>

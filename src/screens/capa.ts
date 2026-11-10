@@ -1,4 +1,4 @@
-import { DATA_CASAMENTO, NOIVA, NOIVO } from '../config';
+import { NOIVA, NOIVO } from '../config';
 import { carregar, estado } from '../estado';
 import { fitaSvg, icone } from '../svg';
 import { esc, manterTelaAcesa } from '../ui';
@@ -27,13 +27,13 @@ function situacao(): string {
 export const capa: TelaApp = {
   montar(_r, raiz) {
     raiz.innerHTML = `<section class="tela tela-capa">
-      <p class="sobre">DESPEDIDA DA ${esc(NOIVA.toUpperCase())} · LADO A</p>
+      <p class="sobre">DESPEDIDA DA ${esc(NOIVA.toUpperCase())}</p>
       <h1 class="titulo-capa">O que o noivo respondeu?</h1>
-      <div class="fita-capa">${fitaSvg({ titulo: 'Respostas do noivo', gira: true, progresso: 0.2 })}</div>
+      <div class="fita-capa">${fitaSvg({ titulo: `Respostas do ${NOIVO}`, gira: true, progresso: 0.2 })}</div>
       <p class="texto">Uma pergunta por vez. A ${esc(NOIVA)} responde primeiro — só depois a fita roda.</p>
       <div class="mola"></div>
       <div class="situacao">${situacao()}</div>
-      <p class="rodape">GRAVADO PELO ${esc(NOIVO.toUpperCase())} · LADO B: ${esc(DATA_CASAMENTO)}</p>
+      <p class="rodape">LADO A: ${esc(NOIVO.toUpperCase())} · LADO B: ${esc(NOIVA.toUpperCase())}</p>
     </section>`;
     raiz.querySelector('.tela-capa')!.addEventListener('click', (ev) => {
       const alvo = (ev.target as HTMLElement).closest<HTMLElement>('[data-acao]');

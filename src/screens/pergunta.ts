@@ -1,4 +1,4 @@
-import { NOIVA } from '../config';
+import { NOIVA, NOIVO } from '../config';
 import { audiosDoNoivo, chaveDaFita, estado, faixa, guardarResposta } from '../estado';
 import * as fita from '../fita';
 import { gravar, podeGravar, type Gravacao } from '../gravador';
@@ -22,7 +22,7 @@ let ouviuAlgo = false;
 function painel(): string {
   if (modo === 'gravando')
     return `<div class="rec" role="status">
-        <span class="luz-rec" aria-hidden="true"></span><span class="rec-txt">REC</span>
+        <span class="luz-rec" aria-hidden="true"></span><span class="rec-txt">REC · LADO B</span>
         <span class="cronometro" id="cronometro">0:00</span>
         <span class="leds" aria-hidden="true">${'<i></i>'.repeat(8)}</span>
       </div>
@@ -35,7 +35,7 @@ function painel(): string {
       <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR DE NOVO</button>
       <button type="button" class="link" data-acao="liberar">Liberar sem gravar</button>`;
   if (modo === 'gravada')
-    return `<p class="texto ok">${icone.check} Resposta dela gravada. Vai pro Drive sozinha.</p>
+    return `<p class="texto ok">${icone.check} Lado B gravado. Vai pro Drive sozinho.</p>
       <div class="linha-links">
         <button type="button" class="link" data-acao="ouvir-dela">Ouvir</button>
         <button type="button" class="link" data-acao="gravar">Regravar</button>
@@ -50,10 +50,18 @@ function painel(): string {
     <button type="button" class="link" data-acao="sem-gravar">${semGravarArmado > Date.now() ? 'Toque de novo pra liberar sem gravar' : 'Seguir sem gravar'}</button>`;
 }
 
+/** Lado A: a resposta dele, lacrada. Enquanto grava, a fita mostra o lado B: a resposta dela. */
+function fitaDaPergunta(): string {
+  return modo === 'gravando'
+    ? fitaSvg({ titulo: `Resposta da ${NOIVA}`, lado: 'B', gira: true, progresso: 0.1 })
+    : fitaSvg({ titulo: `Resposta do ${NOIVO}`, lado: 'A', lacre: 'LACRADA ATÉ ELA RESPONDER', progresso: 0.1 });
+}
+
 function desenharPainel() {
   const el = document.querySelector('.tela-pergunta .painel');
   if (el) el.innerHTML = painel();
-  document.querySelector('.tela-pergunta .fita')?.classList.toggle('gira', modo === 'gravando');
+  const f = document.querySelector('.tela-pergunta .fita-pergunta');
+  if (f) f.innerHTML = fitaDaPergunta();
 }
 
 function pararRelogio() {
@@ -181,7 +189,7 @@ export const pergunta: TelaApp = {
       <div class="miolo">
         <div class="cartao"><p class="rotulo">PERGUNTA</p><p class="pergunta">${esc(f.pergunta)}</p></div>
         <div class="lado-fita">
-          <div class="fita-pergunta">${fitaSvg({ titulo: `Faixa ${dois(n)}`, lacre: 'LACRADA ATÉ ELA RESPONDER', progresso: 0.1 })}</div>
+          <div class="fita-pergunta">${fitaDaPergunta()}</div>
           <div class="painel">${painel()}</div>
         </div>
       </div>
