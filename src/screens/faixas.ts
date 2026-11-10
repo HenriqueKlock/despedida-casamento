@@ -5,12 +5,13 @@ import { icone } from '../svg';
 import { contador, esc } from '../ui';
 import type { TelaApp } from './tipos';
 
-export function linhaDoDrive(): string {
+/** Só aparece quando algo ainda não chegou ao Drive; com tudo salvo, o rodapé fica limpo. */
+export function avisoDoDrive(): string {
   const e = estado;
-  const partes = [`Respostas no Drive: ${e.respostasNoDrive}`];
-  if (e.naFila) partes.push(`${e.naFila} na fila`);
-  if (e.recusadas) partes.push(`${e.recusadas} recusada(s)`);
-  return partes.join(' · ');
+  if (e.recusadas) return `${e.recusadas === 1 ? 'Uma gravação não foi' : e.recusadas + ' gravações não foram'} pro Drive. Grave de novo essa resposta.`;
+  if (!e.naFila) return '';
+  const qt = e.naFila === 1 ? 'Uma resposta está' : `${e.naFila} respostas estão`;
+  return `${qt} guardada${e.naFila === 1 ? '' : 's'} no aparelho, esperando internet pra ir pro Drive.`;
 }
 
 let zerarArmado = 0;
@@ -42,9 +43,7 @@ function html(): string {
     p.proxima !== null
       ? `<a class="botao principal" href="#/faixa/${p.proxima}">${icone.play}FAIXA ${dois(p.proxima)}</a>`
       : `<a class="botao principal" href="#/fim">${icone.play}VER O PLACAR</a>`;
-  const avisos = e.avisos.length
-    ? `<details class="conferencia"><summary>Conferência da fita (${e.avisos.length})</summary><ul>${e.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></details>`
-    : '';
+  const aviso = avisoDoDrive();
   return `<section class="tela tela-faixas">
     <header class="cabeca-faixas">
       <div>
@@ -64,10 +63,8 @@ function html(): string {
     </div>
     ${principal}
     <div class="rodape-faixas">
-      <a class="link" href="#/fim">Encerrar a fita e ver o placar</a>
-      <p class="status-drive">${esc(linhaDoDrive())}${e.semDrive ? ' · sem internet' : ''}</p>
+      ${aviso ? `<p class="status-drive">${esc(aviso)}</p>` : ''}
       ${p.tocadas ? `<button type="button" class="link link-pequeno" data-acao="zerar">${zerarArmado > Date.now() ? 'Toque de novo pra zerar o placar' : 'Zerar placar'}</button>` : ''}
-      ${avisos}
     </div>
   </section>`;
 }
@@ -75,9 +72,7 @@ function html(): string {
 export const faixas: TelaApp = {
   montar(_r, raiz) {
     if (estado.carga !== 'pronta' && !estado.faixas.length) return go('', true);
-    const aberto = raiz.querySelector<HTMLDetailsElement>('.conferencia')?.open;
     raiz.innerHTML = html();
-    if (aberto) raiz.querySelector<HTMLDetailsElement>('.conferencia')!.open = true;
     raiz.querySelector('[data-acao="zerar"]')?.addEventListener('click', async () => {
       if (zerarArmado > Date.now()) {
         zerarArmado = 0;

@@ -18,6 +18,7 @@ Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique
 - **Ponte do Drive** (`apps-script/Ponte.gs`): app da Web do Google Apps Script que roda como o Henrique. Não há banco de dados nem login.
   - `lista`: lê a lista de perguntas (Google Docs, planilha na coluna A, ou `.txt`; dá preferência ao arquivo com "pergunta" no nome) e lista os áudios da pasta.
   - `audio`: entrega um áudio em base64. Só entrega arquivos de dentro da pasta.
+  - `lista` também devolve as gravações que estão em **Respostas da Fernanda**: o Drive manda. Apagou lá, a faixa volta a pedir "Gravar a resposta dela"; gravou num aparelho, os outros baixam e tocam o lado B.
   - `resposta`: salva a gravação da noiva em **Respostas da Fernanda** (subpasta), com nome do tipo `04 - O que ele mais admira na Fernanda.m4a`. Regravar gera um arquivo novo (`(2)`), e o primeiro continua lá.
   - `placar`: acrescenta uma linha na planilha **Placar da despedida**, na mesma pasta.
   - Nada responde sem a **chave**, guardada nas Propriedades do script. Ela vai só no link das madrinhas, nunca no repositório. O app tira a chave do endereço assim que abre.
@@ -25,7 +26,7 @@ Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique
   - Resposta em mais de um áudio: `pergunta-10.ogg` e depois `pergunta-10-1.ogg` (ou `(2)`, `parte 2`) viram uma fita só, com uma pausa curta entre as partes.
   - Áudio sem número (ex.: `extra.ogg`) vira a **fita 2**, o recado do noivo. Ela só destrava quando todas as faixas tiverem resultado: na tela final, a fita 1 sai do toca-fitas e a fita 2 entra (animação), e aí aparece "Tocar a fita 2". Não tem placar.
   - Nenhum áudio com número (nomes do WhatsApp): vale a ordem dos nomes, que é a ordem da gravação.
-  - A tela de faixas tem uma "Conferência da fita" que avisa se faltar ou sobrar áudio.
+  - Para conferir antes da festa: rodar `conferirPasta` no Apps Script.
 - **Surpresa:** perguntas e áudios nunca entram no repositório nem no build (o `.gitignore` bloqueia áudio). Quem abre o endereço sem a chave vê só "Abra pelo link que as madrinhas receberam".
 
 ## Configuração (uma vez, pelo Henrique)
@@ -53,7 +54,7 @@ npm run check      # tipos
 
 1. Abrir o link das madrinhas com internet, antes da festa, e esperar "Rebobinando a fita… N de N" terminar. A partir daí funciona offline.
 2. Deixar o aparelho na tomada. Se for usar a TV, espelhe a tela do celular ou abra o link num notebook ligado no HDMI.
-3. No fim, a linha "Respostas no Drive" mostra quantas já subiram. Se houver fila, é só deixar o app aberto com internet.
+3. Se alguma resposta não subir na hora, aparece um aviso no rodapé da lista ("esperando internet pra ir pro Drive"). É só deixar o app aberto com internet até o aviso sumir.
 
 ## Depois
 

@@ -1,5 +1,5 @@
 import { ErroDeRede, lerChave, ponte, type ListaBruta } from './ponte';
-import { lerPerguntas, mapearFaixas, nomeDaResposta, type AudioInfo, type Faixa, type Resultado } from './regras';
+import { lerPerguntas, mapearFaixas, nomeDaResposta, numeroNoNome, type AudioInfo, type Faixa, type Resultado } from './regras';
 import { db, gravacoesPorFaixa, type AudioGuardado, type Gravacao, type Marcacao } from './store';
 
 // Estado do app na festa. As telas leem daqui e se redesenham quando algo muda.
@@ -101,6 +101,7 @@ async function rodarCarga() {
   estado.erro = null;
   mudou();
   try {
+    const pedidoEm = Date.now();
     const l = await ponte().lista();
     await db.lista.put({ ...l, chave: 'atual', carregada: Date.now() });
     aplicarLista(l);
@@ -119,6 +120,7 @@ async function rodarCarga() {
       }
     };
     await Promise.all([trabalhador(), trabalhador()]);
+    await sincronizarRespostas(l, pedidoEm);
     estado.semDrive = false;
     estado.carga = 'pronta';
   } catch (e) {
@@ -128,6 +130,41 @@ async function rodarCarga() {
     estado.erro = e instanceof ErroDeRede ? 'Não consegui falar com o Drive. Confira a internet.' : e instanceof Error ? e.message : String(e);
   }
   mudou();
+}
+
+/**
+ * O Drive manda nas respostas da noiva: o que foi apagado lá some do app (a faixa volta a pedir gravação),
+ * e o que está lá mas não neste aparelho (gravado no celular, tocando no notebook) é baixado.
+ * Gravações ainda na fila não são tocadas.
+ */
+async function sincronizarRespostas(l: ListaBruta, pedidoEm: number) {
+  if (!l.respostas) return; // ponte antiga, sem a lista de respostas
+  const noDrive = new Map(l.respostas.map((r) => [r.id, r]));
+  const porNome = new Map(l.respostas.map((r) => [r.nome, r]));
+  const locais = await db.gravacoes.toArray();
+  for (const g of locais) {
+    if (!g.enviada) continue;
+    if (!g.driveId) {
+      // enviada por uma versão anterior do app: acha pelo nome
+      const r = porNome.get(g.nome);
+      if (r) await db.gravacoes.update(g.id, { driveId: r.id });
+      else if ((g.enviadaEm ?? 0) < pedidoEm) await db.gravacoes.delete(g.id);
+    } else if (!noDrive.has(g.driveId) && (g.enviadaEm ?? 0) < pedidoEm) {
+      await db.gravacoes.delete(g.id);
+    }
+  }
+  const conhecidos = new Set((await db.gravacoes.toArray()).map((g) => g.driveId).filter(Boolean));
+  for (const r of l.respostas) {
+    if (conhecidos.has(r.id)) continue;
+    const n = numeroNoNome(r.nome)?.n;
+    if (!n || !faixa(n)) continue;
+    const a = await ponte().audio(r.id);
+    await db.gravacoes.put({
+      id: 'drive-' + r.id, faixa: n, nome: r.nome, mime: a.mime || r.mime, blob: base64ParaBlob(a.base64, a.mime || r.mime),
+      criado: Date.parse(r.alterado) || Date.now(), enviada: 1, driveId: r.id, enviadaEm: Date.now(),
+    });
+  }
+  await reler();
 }
 
 /** Chave da fita de uma faixa (muda se algum áudio dela mudar). */
@@ -203,8 +240,8 @@ async function rodarFila() {
     for (const g of await db.gravacoes.where('enviada').equals(0).sortBy('criado')) {
       if (g.erro) continue;
       try {
-        await ponte().resposta({ id: g.id, faixa: g.faixa, nome: g.nome, mime: g.mime, base64: await blobParaBase64(g.blob) });
-        await db.gravacoes.update(g.id, { enviada: 1 });
+        const r = await ponte().resposta({ id: g.id, faixa: g.faixa, nome: g.nome, mime: g.mime, base64: await blobParaBase64(g.blob) });
+        await db.gravacoes.update(g.id, { enviada: 1, driveId: r.arquivo, enviadaEm: Date.now() });
       } catch (e) {
         if (e instanceof ErroDeRede) throw e;
         await db.gravacoes.update(g.id, { erro: e instanceof Error ? e.message : String(e) });
@@ -236,7 +273,11 @@ export function iniciarFila() {
     tentar();
     if (estado.carga !== 'pronta' || estado.semDrive) carregar();
   });
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tentar());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    tentar();
+    carregar(); // relê o Drive: respostas apagadas ou gravadas em outro aparelho
+  });
   setInterval(tentar, 20_000);
   reler().then(() => descarregar());
 }

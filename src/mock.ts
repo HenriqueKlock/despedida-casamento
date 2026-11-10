@@ -7,6 +7,13 @@ import type { Ponte } from './ponte';
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const recebidas: { tipo: string; dados: unknown }[] = [];
 const arquivos: { nome: string; mime: string; base64: string }[] = [];
+// a subpasta "Respostas da Fernanda" de mentira: dá pra apagar pelo console com __apagarNoDrive('01 -')
+const drive: { id: string; nome: string; mime: string; base64: string; alterado: string }[] = [];
+(window as unknown as { __apagarNoDrive: (trecho: string) => number }).__apagarNoDrive = (trecho) => {
+  const antes = drive.length;
+  for (let i = drive.length - 1; i >= 0; i--) if (drive[i].nome.includes(trecho)) drive.splice(i, 1);
+  return antes - drive.length;
+};
 (window as unknown as { __ponte: typeof recebidas; __arquivos: typeof arquivos }).__ponte = recebidas;
 (window as unknown as { __arquivos: typeof arquivos }).__arquivos = arquivos;
 
@@ -36,16 +43,20 @@ export const ponteDeTeste: Ponte = {
         criado: '2026-11-09T21:00:00Z',
         alterado: '2026-11-09T21:00:00Z',
       })),
+      respostas: drive.map((r) => ({ id: r.id, nome: r.nome, mime: r.mime, tamanho: r.base64.length, criado: r.alterado, alterado: r.alterado })),
     };
   },
   async audio(id) {
     await espera(250);
+    const r = drive.find((x) => x.id === id);
+    if (r) return { id, nome: r.nome, mime: r.mime, base64: r.base64 };
     return { id, nome: id + '.ogg', mime: 'audio/ogg', base64: OGG_TESTE };
   },
   async resposta(p) {
     await espera(300);
     recebidas.push({ tipo: 'resposta', dados: { ...p, base64: p.base64.length + ' caracteres' } });
     arquivos.push({ nome: p.nome, mime: p.mime, base64: p.base64 });
+    drive.push({ id: 'arq-' + p.id, nome: p.nome, mime: p.mime, base64: p.base64, alterado: new Date().toISOString() });
     return { arquivo: 'arq-' + p.id, repetido: false };
   },
   async placar(p) {

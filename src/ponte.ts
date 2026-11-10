@@ -7,6 +7,8 @@ export interface ListaBruta {
   pasta: string;
   lista: { id: string; nome: string; alterado: string; texto: string } | null;
   audios: AudioInfo[];
+  /** gravações da noiva na subpasta do Drive (ponte versão 3+; antes disso, ausente) */
+  respostas?: AudioInfo[];
 }
 export interface AudioBruto { id: string; nome: string; mime: string; base64: string }
 export interface Ponte {

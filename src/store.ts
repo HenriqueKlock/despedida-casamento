@@ -15,6 +15,10 @@ export interface Gravacao {
   blob: Blob;
   criado: number;
   enviada: 0 | 1;
+  /** id do arquivo no Drive, depois de enviada (ou quando veio do Drive) */
+  driveId?: string;
+  /** quando a ponte confirmou o envio (para não apagar uma gravação que chegou ao Drive depois da última leitura) */
+  enviadaEm?: number;
   erro?: string;
 }
 export interface Marcacao {

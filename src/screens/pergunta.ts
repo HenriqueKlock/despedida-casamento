@@ -1,5 +1,5 @@
 import { NOIVA, NOIVO } from '../config';
-import { audiosDoNoivo, chaveDaFita, estado, faixa, guardarResposta } from '../estado';
+import { audiosDoNoivo, carregar, chaveDaFita, estado, faixa, guardarResposta } from '../estado';
 import * as fita from '../fita';
 import { gravar, podeGravar, type Gravacao } from '../gravador';
 import { paraMp3 } from '../mp3';
@@ -35,7 +35,7 @@ function painel(): string {
       <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR DE NOVO</button>
       <button type="button" class="link" data-acao="liberar">Liberar sem gravar</button>`;
   if (modo === 'gravada')
-    return `<p class="texto ok">${icone.check} Lado B gravado. Vai pro Drive sozinho.</p>
+    return `<p class="texto ok">${icone.check} ${estado.gravacoes.get(n)?.enviada ? 'Lado B gravado e salvo no Drive.' : 'Lado B gravado. Vai pro Drive sozinho.'}</p>
       <div class="linha-links">
         <button type="button" class="link" data-acao="ouvir-dela">Ouvir</button>
         <button type="button" class="link" data-acao="gravar">Regravar</button>
@@ -197,9 +197,14 @@ export const pergunta: TelaApp = {
     raiz.querySelector('.tela-pergunta')!.addEventListener('click', clique);
     prepararDele();
     prepararDela();
+    carregar(); // confere no Drive se a resposta dela ainda está lá
   },
   atualizar() {
-    /* nada a redesenhar: a gravação em andamento não pode ser interrompida */
+    // durante a gravação nada muda na tela; fora dela, o Drive decide se a faixa já tem a resposta dela
+    if (modo !== 'inicial' && modo !== 'gravada') return;
+    modo = estado.gravacoes.has(n) ? 'gravada' : 'inicial';
+    desenharPainel();
+    prepararDela();
   },
   desmontar() {
     rec?.cancelar();

@@ -4,7 +4,7 @@ import { fraseDoFim, placar } from '../regras';
 import { go } from '../router';
 import { FITA_2, fitaSvg, icone } from '../svg';
 import { esc } from '../ui';
-import { linhaDoDrive } from './faixas';
+import { avisoDoDrive } from './faixas';
 import type { TelaApp } from './tipos';
 
 /** A fita do fim. Com recado extra do noivo: a fita 1 até tudo tocar; depois, a troca animada pela fita 2. */
@@ -37,7 +37,7 @@ export const fim: TelaApp = {
       <p class="texto frase">${esc(fraseDoFim(p.match, p.total))}</p>
       ${fitaDoFim(completo)}
       <div class="mola"></div>
-      <p class="status-drive">${esc(linhaDoDrive())}</p>
+      ${avisoDoDrive() ? `<p class="status-drive">${esc(avisoDoDrive())}</p>` : ''}
       ${estado.extras.length && !completo ? `<p class="bonus-lacrado">${icone.cadeado}Fita 2: libera quando todas as faixas tocarem (faltam ${p.total - p.tocadas})</p>` : ''}
       <a class="botao secundario" href="#/faixas">OUVIR UMA FAIXA DE NOVO</a>
       ${fita2

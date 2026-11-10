@@ -3,14 +3,15 @@
  *
  * Roda como você, o dono da pasta. O app publicado no GitHub Pages fala só com esta ponte:
  * - lê a lista de perguntas e os áudios do noivo da pasta;
- * - salva as respostas gravadas da noiva na subpasta "Respostas da Fernanda";
+ * - salva as respostas gravadas da noiva na subpasta "Respostas da Fernanda" e lista o que está lá
+ *   (o app considera gravada só a resposta que existe no Drive: apagou lá, a faixa volta a pedir gravação);
  * - anota o placar na planilha "Placar da despedida", dentro da mesma pasta.
  *
  * Nada responde sem a CHAVE (Propriedades do script). Ela vai só no link das madrinhas, nunca no repositório.
  * A ponte só entrega arquivos que estão dentro da pasta, mesmo para quem tem a chave.
  */
 
-const VERSAO = 2;
+const VERSAO = 3;
 const PASTA_ID = '1tmibKHjdz8kiiZCF3KvU2EPSCS01W3je';
 const APP_URL = 'https://henriqueklock.github.io/despedida-casamento/';
 const PASTA_RESPOSTAS = 'Respostas da Fernanda';
@@ -106,7 +107,22 @@ function lista_() {
       alterado: f.getLastUpdated().toISOString(),
     };
   });
-  return { pasta: pasta.getName(), lista: lerLista_(arquivos.filter(function (f) { return !ehAudio_(f); })), audios: audios };
+  return { pasta: pasta.getName(), lista: lerLista_(arquivos.filter(function (f) { return !ehAudio_(f); })), audios: audios, respostas: respostas_(pasta) };
+}
+
+/** As gravações da noiva que estão na subpasta (fora da lixeira). */
+function respostas_(pasta) {
+  const it = pasta.getFoldersByName(PASTA_RESPOSTAS);
+  if (!it.hasNext()) return [];
+  const sub = it.next();
+  const lista = [];
+  const fs = sub.getFiles();
+  while (fs.hasNext()) {
+    const f = fs.next();
+    if (f.isTrashed() || !ehAudio_(f)) continue;
+    lista.push({ id: f.getId(), nome: f.getName(), mime: f.getMimeType(), tamanho: f.getSize(), criado: f.getDateCreated().toISOString(), alterado: f.getLastUpdated().toISOString() });
+  }
+  return lista;
 }
 
 /** A lista de perguntas: um Google Doc, uma planilha (coluna A) ou um .txt. Dá preferência ao que tem "pergunta" no nome. */
@@ -152,7 +168,7 @@ function textoDoArquivo_(f) {
   return texto.replace(/^﻿/, '');
 }
 
-/** Um áudio do noivo, em base64. Só entrega arquivos que estão dentro da pasta. */
+/** Um áudio em base64 (do noivo, ou uma gravação da noiva). Só entrega arquivos da pasta ou da subpasta de respostas. */
 function audio_(id) {
   if (typeof id !== 'string' || !/^[\w-]{10,100}$/.test(id)) throw new Error('id_invalido');
   const f = DriveApp.getFileById(id);
@@ -162,7 +178,14 @@ function audio_(id) {
 
 function dentroDaPasta_(f) {
   const pais = f.getParents();
-  while (pais.hasNext()) if (pais.next().getId() === PASTA_ID) return true;
+  while (pais.hasNext()) {
+    const p = pais.next();
+    if (p.getId() === PASTA_ID) return true;
+    if (p.getName() === PASTA_RESPOSTAS) {
+      const avos = p.getParents();
+      while (avos.hasNext()) if (avos.next().getId() === PASTA_ID) return true;
+    }
+  }
   return false;
 }
 
