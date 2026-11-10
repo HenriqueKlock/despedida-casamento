@@ -5,6 +5,7 @@ import { dois, placar, tempo, type AudioInfo, type Resultado } from '../regras';
 import { go, type Rota } from '../router';
 import { FITA_2, fitaSvg, icone, moverFita } from '../svg';
 import { esc } from '../ui';
+import { fita2Ouvida, ligarSenha, marcarFita2Ouvida, painelSenha } from './senha-noiva';
 import type { TelaApp } from './tipos';
 
 // A fita do noivo tocando no deck. Depois, a madrinha marca se deu match.
@@ -27,6 +28,15 @@ function atualizarDeck() {
   const tela = document.querySelector('.tela-tocar');
   if (!tela) return;
   const el = fita.player(ativo);
+  // fim da fita 2: aparece a senha pra noiva liberar o lado B dela pro noivo
+  if (bonus && el.ended) {
+    marcarFita2Ouvida();
+    const caixa = tela.querySelector<HTMLElement>('.coluna-senha');
+    if (caixa?.hidden) {
+      caixa.hidden = false;
+      caixa.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
   const dur = isFinite(el.duration) ? el.duration : 0;
   const p = dur ? el.currentTime / dur : 0;
   const tocando = !el.paused && !el.ended;
@@ -128,7 +138,7 @@ export const tocar: TelaApp = {
           <div class="teclas">${teclas()}</div>
           ${dela ? `<button type="button" class="link claro" data-acao="ouvir-dela">Virar pro lado B (${esc(NOIVA)})</button>` : ''}
         </div>
-        ${bonus ? '' : `<div class="coluna-match">
+        ${bonus ? `<div class="coluna-match coluna-senha" ${fita2Ouvida() ? '' : 'hidden'}>${painelSenha()}</div>` : `<div class="coluna-match">
           <p class="pergunta-match">E aí, deu match?</p>
           <div class="duas">${botoesMatch()}</div>
         </div>`}
@@ -137,6 +147,8 @@ export const tocar: TelaApp = {
     const tela = raiz.querySelector<HTMLElement>('.tela-tocar')!;
     tela.addEventListener('click', clique);
     if (!audios.length) tela.querySelectorAll<HTMLButtonElement>('.teclas button').forEach((b) => (b.disabled = true));
+    const caixaSenha = tela.querySelector<HTMLElement>('.coluna-senha');
+    if (caixaSenha) ligarSenha(caixaSenha);
     soltar = fita.aoTocar(atualizarDeck);
     atualizarDeck();
     if (dela) fita.preparar('noiva', dela.id, [dela]).catch(() => {});
@@ -145,6 +157,9 @@ export const tocar: TelaApp = {
   atualizar() {
     const d = document.querySelector('.tela-tocar .duas');
     if (d) d.innerHTML = botoesMatch();
+    // aviso de "ainda subindo pro Drive" na fita lacrada (o formulário não é redesenhado enquanto ela digita)
+    const c = document.querySelector<HTMLElement>('.tela-tocar .coluna-senha');
+    if (c?.querySelector('.senha-pronta')) c.innerHTML = painelSenha();
   },
   desmontar() {
     soltar?.();

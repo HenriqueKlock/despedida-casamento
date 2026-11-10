@@ -23,11 +23,13 @@ export interface Estado {
   naFila: number;
   respostasNoDrive: number;
   recusadas: number;
+  /** a noiva já criou a senha que libera a página do noivo */
+  senhaCriada: boolean;
 }
 
 export const estado: Estado = {
   carga: 'carregando', erro: null, semDrive: false, baixados: 0, totalAudios: 0, faixas: [], extras: [], avisos: [],
-  resultados: new Map(), marcacoes: new Map(), gravacoes: new Map(), naFila: 0, respostasNoDrive: 0, recusadas: 0,
+  resultados: new Map(), marcacoes: new Map(), gravacoes: new Map(), naFila: 0, respostasNoDrive: 0, recusadas: 0, senhaCriada: false,
 };
 
 const ouvintes = new Set<() => void>();
@@ -48,6 +50,7 @@ function aplicarLista(l: ListaBruta) {
   const m = mapearFaixas(perguntas, l.audios);
   estado.faixas = m.faixas;
   estado.extras = m.extras;
+  estado.senhaCriada = !!l.senhaCriada;
   estado.avisos = l.lista ? m.avisos : ['Não achei a lista de perguntas na pasta do Drive'];
 }
 
@@ -211,6 +214,13 @@ export async function marcar(n: number, resultado: Resultado) {
   });
   await reler();
   descarregar();
+}
+
+/** A noiva cria (ou troca) a senha que libera o lado B dela para o noivo. Precisa de internet. */
+export async function criarSenha(senha: string) {
+  await ponte().senha(senha);
+  estado.senhaCriada = true;
+  mudou();
 }
 
 export async function zerarPlacar() {

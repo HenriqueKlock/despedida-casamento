@@ -5,13 +5,16 @@
  * - lê a lista de perguntas e os áudios do noivo da pasta;
  * - salva as respostas gravadas da noiva na subpasta "Respostas da Fernanda" e lista o que está lá
  *   (o app considera gravada só a resposta que existe no Drive: apagou lá, a faixa volta a pedir gravação);
- * - anota o placar na planilha "Placar da despedida", dentro da mesma pasta.
+ * - anota o placar na planilha "Placar da despedida", dentro da mesma pasta;
+ * - guarda a SENHA que a noiva cria no fim da brincadeira, e com ela libera a página do noivo (/noivo):
+ *   perguntas, as respostas dela, as dele e o placar.
  *
- * Nada responde sem a CHAVE (Propriedades do script). Ela vai só no link das madrinhas, nunca no repositório.
+ * As ações das madrinhas não respondem sem a CHAVE (Propriedades do script). Ela vai só no link das madrinhas, nunca no repositório.
+ * As ações do noivo (noivo_lista, noivo_audio) não respondem sem a senha da noiva. A ponte guarda só o hash da senha.
  * A ponte só entrega arquivos que estão dentro da pasta, mesmo para quem tem a chave.
  */
 
-const VERSAO = 3;
+const VERSAO = 4;
 const PASTA_ID = '1tmibKHjdz8kiiZCF3KvU2EPSCS01W3je';
 const APP_URL = 'https://henriqueklock.github.io/despedida-casamento/';
 const PASTA_RESPOSTAS = 'Respostas da Fernanda';
@@ -28,6 +31,14 @@ function gerarChave() {
   const chave = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
   PropertiesService.getScriptProperties().setProperty('CHAVE', chave);
   Logger.log('Link das madrinhas (não mande para a noiva):\n' + APP_URL + '#k=' + chave);
+}
+
+/** Apaga a senha da noiva (a página do noivo volta a ficar trancada até ela criar outra). */
+function apagarSenha() {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('SENHA_SAL');
+  props.deleteProperty('SENHA_HASH');
+  Logger.log('Senha apagada.');
 }
 
 /** Mostra no registro o que a ponte enxerga na pasta, para conferir antes da festa. */
@@ -53,8 +64,21 @@ function doGet() {
 function doPost(e) {
   return responder_(function () {
     const b = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    // página do noivo: só com a senha que a noiva criou
+    if (b.acao === 'noivo_lista' || b.acao === 'noivo_audio') {
+      conferirSenha_(b.senha);
+      if (b.acao === 'noivo_audio') return audio_(b.id);
+      const d = lista_();
+      d.resultados = resultados_();
+      return d;
+    }
     conferirChave_(b.chave);
-    if (b.acao === 'lista') return lista_();
+    if (b.acao === 'senha') return definirSenha_(b.senha);
+    if (b.acao === 'lista') {
+      const d = lista_();
+      d.senhaCriada = !!PropertiesService.getScriptProperties().getProperty('SENHA_HASH');
+      return d;
+    }
     if (b.acao === 'audio') return audio_(b.id);
     if (b.acao === 'resposta') return salvarResposta_(b);
     if (b.acao === 'placar') return salvarPlacar_(b);
@@ -81,6 +105,53 @@ function conferirChave_(c) {
     Utilities.sleep(1000); // atrasa quem tenta adivinhar
     throw new Error('chave');
   }
+}
+
+/* ---------- senha da noiva ---------- */
+
+function normalizarSenha_(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
+function hashSenha_(sal, senha) {
+  return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, sal + ':' + senha, Utilities.Charset.UTF_8));
+}
+
+/** A noiva cria (ou troca) a senha no fim da brincadeira. Só pelo app das madrinhas (com a chave). */
+function definirSenha_(senha) {
+  const s = normalizarSenha_(senha);
+  if (s.length < 4 || s.length > 60) throw new Error('senha_tamanho');
+  const sal = Utilities.getUuid();
+  PropertiesService.getScriptProperties().setProperties({ SENHA_SAL: sal, SENHA_HASH: hashSenha_(sal, s) });
+  return { criada: true };
+}
+
+function conferirSenha_(senha) {
+  const props = PropertiesService.getScriptProperties();
+  const hash = props.getProperty('SENHA_HASH');
+  if (!hash) throw new Error('sem_senha');
+  if (hashSenha_(props.getProperty('SENHA_SAL'), normalizarSenha_(senha)) !== hash) {
+    Utilities.sleep(1500); // atrasa quem tenta adivinhar
+    throw new Error('senha');
+  }
+}
+
+/** Último resultado de cada faixa na planilha do placar: { "4": "match", "5": "sem_match" }. */
+function resultados_() {
+  const it = DriveApp.getFolderById(PASTA_ID).getFilesByName(PLANILHA_PLACAR);
+  let ss = null;
+  while (it.hasNext()) {
+    const f = it.next();
+    if (!f.isTrashed() && f.getMimeType() === MimeType.GOOGLE_SHEETS) ss = SpreadsheetApp.openById(f.getId());
+  }
+  const res = {};
+  if (!ss) return res;
+  const linhas = ss.getSheets()[0].getDataRange().getValues().slice(1);
+  linhas.forEach(function (l) {
+    const faixa = Number(l[1]);
+    if (faixa > 0) res[faixa] = l[3] === 'Deu match' ? 'match' : 'sem_match';
+  });
+  return res;
 }
 
 /* ---------- leitura ---------- */

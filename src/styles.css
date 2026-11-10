@@ -453,3 +453,38 @@ a { color: var(--terracota); }
   .fita-sai { display: none; }
   .fita-entra, .fita-entra .carretel, .fita2-entra { animation: none; }
 }
+
+/* senha da noiva, no fim da fita 2 (fundo escuro) */
+.texto.claro, .nota.clara { color: var(--creme-apagado); }
+.texto.claro strong { color: var(--etiqueta); font-weight: 700; overflow-wrap: anywhere; }
+.coluna-senha { padding-top: 1.25rem; }
+.form-senha, .senha-pronta { display: flex; flex-direction: column; gap: 0.75rem; }
+.form-senha .pergunta-match, .senha-pronta .pergunta-match { margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.rotulo-senha { font-family: var(--f-maquina); font-size: 0.75rem; letter-spacing: 0.125rem; color: var(--mostarda); }
+.form-senha input, .campo-senha {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0 1rem;
+  border: 2px solid var(--creme-apagado);
+  border-radius: 0.5rem;
+  background: var(--deck-fundo);
+  color: var(--etiqueta);
+  font-family: var(--f-mono);
+  font-size: 1.25rem;
+  letter-spacing: 0.06rem;
+}
+.form-senha input:focus, .campo-senha:focus { outline: none; border-color: var(--mostarda); }
+.nota.erro.clara, .form-senha .erro { color: #f0a58a; margin: 0; }
+.form-senha .botao { margin-top: 0.25rem; }
+.senha-pronta .texto { margin: 0; }
+
+/* página do noivo */
+.form-entrada { width: 100%; display: flex; flex-direction: column; gap: 0.625rem; }
+.form-entrada .rotulo { text-align: center; }
+.form-entrada .nota.erro { margin: 0; }
+.campo-senha.campo-claro { background: var(--etiqueta); color: var(--tinta); border-color: var(--tinta); text-align: center; }
+.campo-senha.campo-claro:focus { border-color: var(--terracota); }
+.tela-entrada .texto { margin-top: 1.75rem; }
+.selo-sem-resposta { flex: none; font-family: var(--f-maquina); font-size: 0.625rem; letter-spacing: 0.06rem; color: var(--tinta-2); }
+.resultado-noivo { margin: 0 0 0.875rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-family: var(--f-mao); font-size: 1.75rem; font-weight: 700; color: var(--mostarda); }
+.resultado-noivo .ic { width: 1.25rem; height: 1.25rem; }

@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -6,6 +7,12 @@ const base = process.env.BASE_PATH ?? '/despedida-casamento/';
 
 export default defineConfig({
   base,
+  build: {
+    // duas páginas: o app das madrinhas (/) e a página do noivo (/noivo/)
+    rolldownOptions: {
+      input: { main: resolve(import.meta.dirname, 'index.html'), noivo: resolve(import.meta.dirname, 'noivo/index.html') },
+    },
+  },
   plugins: [
     VitePWA({
       // uma noite só: sem aviso de atualização (o código congela antes da festa)
@@ -34,6 +41,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         globIgnores: ['**/opus-ml-*.js'],
         navigateFallback: base + 'index.html',
+        // a página do noivo é outra página: nunca cair no app das madrinhas
+        navigateFallbackDenylist: [/\/noivo\/?/],
         cleanupOutdatedCaches: true,
       },
     }),

@@ -37,6 +37,14 @@ if (!PONTE) {
     const sem = await chamar({ acao, id: 'x'.repeat(20) });
     !sem.ok && !sem.dados ? ok(`ponte ${acao}: sem chave recusada (${sem.erro})`) : ruim(`ponte ${acao}: respondeu sem chave`);
   }
+  const senhaSemChave = await chamar({ acao: 'senha', senha: 'invasor' });
+  !senhaSemChave.ok ? ok(`ponte senha: criar senha sem a chave recusado (${senhaSemChave.erro})`) : ruim('ponte senha: criou senha sem a chave');
+  for (const acao of ['noivo_lista', 'noivo_audio']) {
+    const sem = await chamar({ acao, id: 'x'.repeat(20) });
+    !sem.ok && !sem.dados ? ok(`ponte ${acao}: sem senha recusada (${sem.erro})`) : ruim(`ponte ${acao}: respondeu sem senha`);
+    const errada = await chamar({ acao, senha: 'senha-inventada-' + Date.now(), id: 'x'.repeat(20) });
+    !errada.ok && !errada.dados ? ok(`ponte ${acao}: senha errada recusada (${errada.erro})`) : ruim(`ponte ${acao}: aceitou senha errada`);
+  }
   const errada = await chamar({ acao: 'lista', chave: 'f'.repeat(64) });
   !errada.ok && !errada.dados ? ok(`ponte lista: chave errada recusada (${errada.erro})`) : ruim('ponte lista: aceitou chave errada');
   const get = await fetch(PONTE, { redirect: 'follow' }).then((r) => r.text()).catch((e) => 'erro: ' + e.message);

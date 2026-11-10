@@ -2,7 +2,8 @@
 
 Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique, e ele respondeu em áudio pelo WhatsApp. Na festa, o app mostra uma pergunta por vez. A fita tem dois lados: o **lado A** é a resposta do Henrique, e o **lado B** é a resposta da Fernanda, gravada na hora. A Fernanda responde em voz alta, a resposta dela é gravada e só depois a fita com a resposta do noivo destrava e toca. A madrinha marca se **deu match** ou **não deu match**, e no fim aparece o placar.
 
-- App: https://henriqueklock.github.io/despedida-casamento/ (as madrinhas entram só pelo link com a chave, `#k=…`).
+- App das madrinhas: https://henriqueklock.github.io/despedida-casamento/ (entram só pelo link com a chave, `#k=…`; depois o aparelho lembra).
+- Página do noivo: https://henriqueklock.github.io/despedida-casamento/noivo (com a senha que a noiva cria no fim).
 - Telas: canvas "Fita da Despedida" (mockup aprovado).
 - Segue os padrões do [Casamento Babys](https://github.com/HenriqueKlock/casamento-babys) e do [Enche AI](https://github.com/HenriqueKlock/encheai).
 
@@ -27,6 +28,10 @@ Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique
   - Áudio sem número (ex.: `extra.ogg`) vira a **fita 2**, o recado do noivo. Ela só destrava quando todas as faixas tiverem resultado: na tela final, a fita 1 sai do toca-fitas e a fita 2 entra (animação), e aí aparece "Tocar a fita 2". Não tem placar.
   - Nenhum áudio com número (nomes do WhatsApp): vale a ordem dos nomes, que é a ordem da gravação.
   - Para conferir antes da festa: rodar `conferirPasta` no Apps Script.
+- **Senha da noiva e página do noivo:** quando a fita 2 termina, aparece pra Fernanda o campo "Senha pro Henrique". Ela cria a senha (mínimo 4 caracteres; maiúsculas e espaços nas pontas não importam) e a fita fica "lacrada". Ela pode trocar depois.
+  - O noivo abre **https://henriqueklock.github.io/despedida-casamento/noivo**, digita a senha e vê a mesma lista de faixas, com o resultado (match ou não) de cada uma. Cada faixa toca a resposta dela (lado B), e dá pra virar e ouvir a dele (lado A). Ele também ouve as faixas que ela regravou (sempre a gravação mais recente).
+  - A ponte guarda só o hash da senha. Com ela, a página do noivo lê perguntas, áudios e placar (`noivo_lista`, `noivo_audio`); criar a senha exige a chave das madrinhas. `apagarSenha` (no editor do Apps Script) tranca a página de novo.
+  - Quem tem o link das madrinhas também consegue ouvir as respostas dela no app (é como o app troca de aparelho). A senha é a regra da brincadeira, não um cofre.
 - **Surpresa:** perguntas e áudios nunca entram no repositório nem no build (o `.gitignore` bloqueia áudio). Quem abre o endereço sem a chave vê só "Abra pelo link que as madrinhas receberam".
 
 ## Configuração (uma vez, pelo Henrique)
