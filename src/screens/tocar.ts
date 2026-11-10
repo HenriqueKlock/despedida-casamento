@@ -103,6 +103,7 @@ export const tocar: TelaApp = {
     const bonusLacrado = bonus && placar(estado.faixas, estado.resultados).proxima !== null;
     if (bonus ? !estado.extras.length || bonusLacrado : !f) return go(bonus && estado.faixas.length ? 'fim' : estado.faixas.length ? 'faixas' : '', true);
     n = f?.n ?? 0;
+    if (!bonus && !estado.gravacoes.has(n)) return go(`faixa/${n}`, true);
     ativo = 'noivo';
     const audios = bonus ? estado.extras : f!.audios;
     const dela = bonus ? undefined : estado.gravacoes.get(n);

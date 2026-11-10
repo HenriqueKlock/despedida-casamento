@@ -16,7 +16,6 @@ let n = 0;
 let modo: Modo = 'inicial';
 let rec: Gravacao | null = null;
 let relogio: number | undefined;
-let semGravarArmado = 0;
 let ouviuAlgo = false;
 
 function painel(): string {
@@ -32,8 +31,7 @@ function painel(): string {
   if (modo === 'guardando') return `<p class="texto" role="status">Guardando a gravação…</p>`;
   if (modo === 'muda')
     return `<p class="texto">A gravação saiu sem som. Confira se o microfone certo está liberado no navegador (ícone de microfone na barra de endereço) e grave de novo.</p>
-      <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR DE NOVO</button>
-      <button type="button" class="link" data-acao="liberar">Liberar sem gravar</button>`;
+      <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR DE NOVO</button>`;
   if (modo === 'gravada')
     return `<p class="texto ok">${icone.check} ${estado.gravacoes.get(n)?.enviada ? 'Lado B gravado e salvo no Drive.' : 'Lado B gravado. Vai pro Drive sozinho.'}</p>
       <div class="linha-links">
@@ -42,12 +40,10 @@ function painel(): string {
       </div>
       <button type="button" class="botao principal" data-acao="liberar">${icone.aberto}ELA RESPONDEU · LIBERAR</button>`;
   if (modo === 'sem_mic')
-    return `<p class="texto">Não deu pra usar o microfone. Permita o microfone no navegador ou siga sem gravar.</p>
-      <button type="button" class="botao secundario" data-acao="gravar">Tentar de novo</button>
-      <button type="button" class="botao principal" data-acao="liberar">${icone.aberto}LIBERAR SEM GRAVAR</button>`;
+    return `<p class="texto">Não deu pra usar o microfone. Permita o microfone pra este site no navegador (ícone na barra de endereço) e tente de novo. A fita só destrava depois da resposta gravada.</p>
+      <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}TENTAR DE NOVO</button>`;
   return `<p class="texto">${esc(NOIVA)}, responde em voz alta. A gente grava, e a fita só destrava depois da sua resposta.</p>
-    <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR A RESPOSTA DELA</button>
-    <button type="button" class="link" data-acao="sem-gravar">${semGravarArmado > Date.now() ? 'Toque de novo pra liberar sem gravar' : 'Seguir sem gravar'}</button>`;
+    <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR A RESPOSTA DELA</button>`;
 }
 
 /** Lado A: a resposta dele, lacrada. Enquanto grava, a fita mostra o lado B: a resposta dela. */
@@ -141,6 +137,8 @@ async function prepararDele() {
 }
 
 function liberar() {
+  // só destrava com a resposta dela gravada
+  if (!estado.gravacoes.has(n)) return;
   const f = faixa(n);
   // dentro do clique: o navegador deixa a fita do noivo começar a tocar
   if (f?.audios.length && fita.pronta('noivo', chaveDaFita(f.audios))) fita.tocarDoComeco('noivo').catch(() => {});
@@ -162,15 +160,6 @@ async function clique(ev: Event) {
   else if (acao === 'ouvir-dela') {
     const g = estado.gravacoes.get(n);
     if (g && fita.pronta('noiva', g.id)) fita.alternar('noiva').catch(() => {});
-  } else if (acao === 'sem-gravar') {
-    if (semGravarArmado > Date.now()) {
-      semGravarArmado = 0;
-      liberar();
-    } else {
-      semGravarArmado = Date.now() + 4000;
-      desenharPainel();
-      setTimeout(() => modo === 'inicial' && desenharPainel(), 4100);
-    }
   }
 }
 
@@ -180,7 +169,6 @@ export const pergunta: TelaApp = {
     if (!f) return go(estado.faixas.length ? 'faixas' : '', true);
     n = f.n;
     modo = estado.gravacoes.has(n) ? 'gravada' : 'inicial';
-    semGravarArmado = 0;
     raiz.innerHTML = `<section class="tela tela-pergunta">
       <header class="topo">
         <a class="voltar" href="#/faixas">${icone.voltar}Faixas</a>
