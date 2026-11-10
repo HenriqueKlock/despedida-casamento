@@ -26,8 +26,24 @@ const teste = textos.find(([, t]) => t.includes('Despedida (teste)') || t.includ
 teste ? ruim('build de produção com a ponte de teste: ' + teste[0]) : ok('build sem a ponte de teste');
 
 // 2) ponte do Drive
+// o Apps Script às vezes demora a acordar: até 4 tentativas, 60 s cada, antes de reprovar
+async function buscar(opcoes) {
+  let ultimo;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const r = await fetch(PONTE, { ...opcoes, redirect: 'follow', signal: AbortSignal.timeout(60_000) });
+      if (r.status < 500) return r;
+      ultimo = new Error('http ' + r.status);
+    } catch (e) {
+      ultimo = e;
+    }
+    console.log(`       (ponte não respondeu, tentativa ${i + 1}: ${ultimo.message})`);
+    await new Promise((ok) => setTimeout(ok, 5000 * (i + 1)));
+  }
+  throw ultimo;
+}
 async function chamar(corpo) {
-  const r = await fetch(PONTE, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(corpo), redirect: 'follow' });
+  const r = await buscar({ method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(corpo) });
   try { return await r.json(); } catch { return { ok: false, erro: 'http ' + r.status }; }
 }
 if (!PONTE) {
@@ -47,7 +63,7 @@ if (!PONTE) {
   }
   const errada = await chamar({ acao: 'lista', chave: 'f'.repeat(64) });
   !errada.ok && !errada.dados ? ok(`ponte lista: chave errada recusada (${errada.erro})`) : ruim('ponte lista: aceitou chave errada');
-  const get = await fetch(PONTE, { redirect: 'follow' }).then((r) => r.text()).catch((e) => 'erro: ' + e.message);
+  const get = await buscar({}).then((r) => r.text()).catch((e) => 'erro: ' + e.message);
   let saude = null;
   try { saude = JSON.parse(get); } catch { /* página do Google = implantação sem acesso público */ }
   saude?.ok && saude.dados === 'ponte da despedida no ar'
