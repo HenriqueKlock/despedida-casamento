@@ -11,7 +11,7 @@ Brincadeira da despedida da Fernanda. As madrinhas fizeram perguntas ao Henrique
 - **App (PWA):** Vite + TypeScript, sem framework, publicado no GitHub Pages. Telas em `src/screens/`, rotas por endereço (`#/`, `#/faixas`, `#/faixa/4`, `#/tocar/4`, `#/fim`). Responsivo: celular, tablet e TV. Em tela larga e deitada, a pergunta e a fita ficam lado a lado.
   - Regras sem tela, testadas: `src/regras.ts` (lista de perguntas, ligação pergunta ↔ áudio, nomes, placar).
   - **Tudo fica no aparelho** (IndexedDB, `src/store.ts`): ao abrir o link, o app baixa a lista e todos os áudios do noivo. A partir daí a fita toca mesmo sem Wi-Fi.
-  - **Gravação** (`src/gravador.ts`): microfone do navegador. iPhone/iPad gravam `.m4a`, Android e computador gravam `.webm`.
+  - **Gravação** (`src/gravador.ts`, `src/mp3.ts`): microfone do navegador, no formato nativo de cada aparelho. Ao parar, o app converte para **MP3**, que toca em qualquer lugar. O Chrome, por exemplo, grava "m4a" com Opus dentro, e quase nenhum player toca isso. Na conversão, o app confere se tem som (gravação muda não é guardada e pede para gravar de novo) e sobe o volume se ficou baixo.
   - **Fila para o Drive** (`src/estado.ts`): respostas e placar ficam guardados no aparelho até a ponte confirmar. Sobem sozinhos ao voltar a internet, ao reabrir o app e a cada 20 s. O id de cada envio é gerado no aparelho, então reenviar não duplica.
   - **Áudios do WhatsApp (.ogg)** (`src/fita.ts`): quando o aparelho não sabe tocar `.ogg` (alguns iPhones), o app decodifica e toca como `.wav`. A decodificação acontece enquanto a noiva responde.
   - A tela fica acesa durante a brincadeira (quando o aparelho deixa).

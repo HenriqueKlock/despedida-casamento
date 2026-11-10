@@ -2,6 +2,7 @@ import { NOIVA } from '../config';
 import { audiosDoNoivo, chaveDaFita, estado, faixa, guardarResposta } from '../estado';
 import * as fita from '../fita';
 import { gravar, podeGravar, type Gravacao } from '../gravador';
+import { paraMp3 } from '../mp3';
 import { dois, tempo } from '../regras';
 import { go, type Rota } from '../router';
 import { fitaSvg, icone } from '../svg';
@@ -10,12 +11,13 @@ import type { TelaApp } from './tipos';
 
 // Pergunta com a fita lacrada. A madrinha grava a resposta da noiva; só depois a fita do noivo destrava.
 
-type Modo = 'inicial' | 'gravando' | 'gravada' | 'sem_mic';
+type Modo = 'inicial' | 'gravando' | 'guardando' | 'gravada' | 'muda' | 'sem_mic';
 let n = 0;
 let modo: Modo = 'inicial';
 let rec: Gravacao | null = null;
 let relogio: number | undefined;
 let semGravarArmado = 0;
+let ouviuAlgo = false;
 
 function painel(): string {
   if (modo === 'gravando')
@@ -24,8 +26,14 @@ function painel(): string {
         <span class="cronometro" id="cronometro">0:00</span>
         <span class="leds" aria-hidden="true">${'<i></i>'.repeat(8)}</span>
       </div>
+      <p class="aviso-mic" id="aviso-mic" hidden></p>
       <button type="button" class="botao parar" data-acao="parar">${icone.parar}ELA TERMINOU</button>
       <button type="button" class="link" data-acao="cancelar">Cancelar gravação</button>`;
+  if (modo === 'guardando') return `<p class="texto" role="status">Guardando a gravação…</p>`;
+  if (modo === 'muda')
+    return `<p class="texto">A gravação saiu sem som. Confira se o microfone certo está liberado no navegador (ícone de microfone na barra de endereço) e grave de novo.</p>
+      <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR DE NOVO</button>
+      <button type="button" class="link" data-acao="liberar">Liberar sem gravar</button>`;
   if (modo === 'gravada')
     return `<p class="texto ok">${icone.check} Resposta dela gravada. Vai pro Drive sozinha.</p>
       <div class="linha-links">
@@ -66,6 +74,7 @@ async function comecarGravacao() {
     return desenharPainel();
   }
   modo = 'gravando';
+  ouviuAlgo = false;
   desenharPainel();
   relogio = window.setInterval(() => {
     if (!rec) return;
@@ -73,6 +82,17 @@ async function comecarGravacao() {
     if (c) c.textContent = tempo((Date.now() - rec.inicio) / 1000);
     const nivel = rec.nivel();
     document.querySelectorAll<HTMLElement>('.leds i').forEach((led, i) => led.classList.toggle('aceso', nivel > (i + 0.5) / 8));
+    if (nivel > 0.05) ouviuAlgo = true;
+    const aviso = document.getElementById('aviso-mic');
+    if (aviso) {
+      const msg = rec.cortado()
+        ? 'O microfone foi cortado pelo aparelho.'
+        : !ouviuAlgo && Date.now() - rec.inicio > 4000
+          ? 'Não estou ouvindo nada. Confira o microfone.'
+          : '';
+      aviso.hidden = !msg;
+      aviso.textContent = msg;
+    }
   }, 120);
 }
 
@@ -81,9 +101,17 @@ async function pararGravacao() {
   const r = rec;
   rec = null;
   pararRelogio();
+  modo = 'guardando';
+  desenharPainel();
   try {
-    const { blob, mime } = await r.parar();
-    await guardarResposta(n, blob, mime);
+    const gravado = await r.parar();
+    // MP3 toca em qualquer lugar; se este aparelho não conseguir converter, guarda o original
+    const mp3 = await paraMp3(gravado.blob).catch(() => null);
+    if (mp3 && !mp3.temSom) {
+      modo = 'muda';
+      return desenharPainel();
+    }
+    await guardarResposta(n, mp3 ? mp3.blob : gravado.blob, mp3 ? 'audio/mpeg' : gravado.mime);
     prepararDela();
     modo = 'gravada';
   } catch (e) {
@@ -115,6 +143,7 @@ async function clique(ev: Event) {
   const acao = (ev.target as HTMLElement).closest<HTMLElement>('[data-acao]')?.dataset.acao;
   if (acao === 'gravar') comecarGravacao();
   else if (acao === 'parar') pararGravacao();
+  else if (modo === 'guardando') return;
   else if (acao === 'cancelar') {
     rec?.cancelar();
     rec = null;

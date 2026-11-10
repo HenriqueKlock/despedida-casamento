@@ -36,6 +36,7 @@ async function iniciar() {
   if (import.meta.env.VITE_MOCK === '1') {
     const { ponteDeTeste } = await import('./mock');
     usarPonte(ponteDeTeste);
+    (window as unknown as { __fita: unknown }).__fita = await import('./fita');
   }
   // o link das madrinhas traz a chave (#k=…): guarda no aparelho e tira do endereço, para não aparecer na tela
   const k = chaveDoEndereco(location.hash);

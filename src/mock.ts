@@ -6,7 +6,9 @@ import type { Ponte } from './ponte';
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const recebidas: { tipo: string; dados: unknown }[] = [];
-(window as unknown as { __ponte: typeof recebidas }).__ponte = recebidas;
+const arquivos: { nome: string; mime: string; base64: string }[] = [];
+(window as unknown as { __ponte: typeof recebidas; __arquivos: typeof arquivos }).__ponte = recebidas;
+(window as unknown as { __arquivos: typeof arquivos }).__arquivos = arquivos;
 
 const perguntas = [
   'Onde foi o primeiro encontro de vocês?',
@@ -43,6 +45,7 @@ export const ponteDeTeste: Ponte = {
   async resposta(p) {
     await espera(300);
     recebidas.push({ tipo: 'resposta', dados: { ...p, base64: p.base64.length + ' caracteres' } });
+    arquivos.push({ nome: p.nome, mime: p.mime, base64: p.base64 });
     return { arquivo: 'arq-' + p.id, repetido: false };
   },
   async placar(p) {
