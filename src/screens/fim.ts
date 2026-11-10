@@ -25,7 +25,9 @@ export const fim: TelaApp = {
       <div class="fita-fim">${fitaSvg({ titulo: `O casamento · ${DATA_CASAMENTO}`, lado: 'B', faixas: ['#D9A441', '#B5542A'], progresso: 0.9 })}</div>
       <div class="mola"></div>
       <p class="status-drive">${esc(linhaDoDrive())}</p>
-      ${estado.extras.length ? `<a class="botao secundario bonus" href="#/bonus">${icone.play}OUVIR A FAIXA BÔNUS</a>` : ''}
+      ${!estado.extras.length ? '' : p.proxima === null
+        ? `<a class="botao secundario bonus" href="#/bonus">${icone.play}OUVIR A FAIXA BÔNUS</a>`
+        : `<p class="bonus-lacrado">${icone.cadeado}Faixa bônus: libera quando todas as faixas tocarem (faltam ${p.total - p.tocadas})</p>`}
       <a class="botao secundario" href="#/faixas">OUVIR UMA FAIXA DE NOVO</a>
       <a class="botao principal" href="#/">${icone.rebobinar}REBOBINAR TUDO</a>
     </section>`;

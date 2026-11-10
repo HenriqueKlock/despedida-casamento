@@ -97,7 +97,9 @@ export const tocar: TelaApp = {
   montar(r: Rota, raiz) {
     bonus = r.tela === 'bonus';
     const f = bonus ? null : r.n ? faixa(r.n) : null;
-    if (bonus ? !estado.extras.length : !f) return go(estado.faixas.length ? 'faixas' : '', true);
+    // a faixa bônus só destrava depois de todas as faixas
+    const bonusLacrado = bonus && placar(estado.faixas, estado.resultados).proxima !== null;
+    if (bonus ? !estado.extras.length || bonusLacrado : !f) return go(bonus && estado.faixas.length ? 'fim' : estado.faixas.length ? 'faixas' : '', true);
     n = f?.n ?? 0;
     ativo = 'noivo';
     const audios = bonus ? estado.extras : f!.audios;
