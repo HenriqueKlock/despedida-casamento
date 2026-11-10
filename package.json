@@ -1,0 +1,30 @@
+{
+  "name": "despedida-casamento",
+  "version": "1.0.0",
+  "description": "Despedida da Fernanda: a noiva responde às perguntas e só depois ouve a fita com a resposta do noivo",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "dev:mock": "VITE_MOCK=1 vite",
+    "build": "vite build",
+    "build:mock": "VITE_MOCK=1 vite build --outDir dist-mock",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/space-mono": "^5.3.0",
+    "@fontsource/special-elite": "^5.3.0",
+    "dexie": "^4.4.7",
+    "ogg-opus-decoder": "^1.7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.7",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}

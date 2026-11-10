@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-mock/
+.env
+.env.*
+# perguntas, áudios e respostas ficam só no Drive, nunca no repositório
+*.ogg
+*.opus
+*.m4a
+*.mp3
+*.wav
+*.webm
+*.zip

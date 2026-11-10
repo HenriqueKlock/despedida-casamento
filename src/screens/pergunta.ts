@@ -1,0 +1,172 @@
+import { NOIVA } from '../config';
+import { audioDoNoivo, estado, faixa, guardarResposta } from '../estado';
+import * as fita from '../fita';
+import { gravar, podeGravar, type Gravacao } from '../gravador';
+import { dois, tempo } from '../regras';
+import { go, type Rota } from '../router';
+import { fitaSvg, icone } from '../svg';
+import { avisar, esc } from '../ui';
+import type { TelaApp } from './tipos';
+
+// Pergunta com a fita lacrada. A madrinha grava a resposta da noiva; só depois a fita do noivo destrava.
+
+type Modo = 'inicial' | 'gravando' | 'gravada' | 'sem_mic';
+let n = 0;
+let modo: Modo = 'inicial';
+let rec: Gravacao | null = null;
+let relogio: number | undefined;
+let semGravarArmado = 0;
+
+function painel(): string {
+  if (modo === 'gravando')
+    return `<div class="rec" role="status">
+        <span class="luz-rec" aria-hidden="true"></span><span class="rec-txt">REC</span>
+        <span class="cronometro" id="cronometro">0:00</span>
+        <span class="leds" aria-hidden="true">${'<i></i>'.repeat(8)}</span>
+      </div>
+      <button type="button" class="botao parar" data-acao="parar">${icone.parar}ELA TERMINOU</button>
+      <button type="button" class="link" data-acao="cancelar">Cancelar gravação</button>`;
+  if (modo === 'gravada')
+    return `<p class="texto ok">${icone.check} Resposta dela gravada. Vai pro Drive sozinha.</p>
+      <div class="linha-links">
+        <button type="button" class="link" data-acao="ouvir-dela">Ouvir</button>
+        <button type="button" class="link" data-acao="gravar">Regravar</button>
+      </div>
+      <button type="button" class="botao principal" data-acao="liberar">${icone.aberto}ELA RESPONDEU · LIBERAR</button>`;
+  if (modo === 'sem_mic')
+    return `<p class="texto">Não deu pra usar o microfone. Permita o microfone no navegador ou siga sem gravar.</p>
+      <button type="button" class="botao secundario" data-acao="gravar">Tentar de novo</button>
+      <button type="button" class="botao principal" data-acao="liberar">${icone.aberto}LIBERAR SEM GRAVAR</button>`;
+  return `<p class="texto">${esc(NOIVA)}, responde em voz alta. A gente grava, e a fita só destrava depois da sua resposta.</p>
+    <button type="button" class="botao gravar" data-acao="gravar">${icone.rec}GRAVAR A RESPOSTA DELA</button>
+    <button type="button" class="link" data-acao="sem-gravar">${semGravarArmado > Date.now() ? 'Toque de novo pra liberar sem gravar' : 'Seguir sem gravar'}</button>`;
+}
+
+function desenharPainel() {
+  const el = document.querySelector('.tela-pergunta .painel');
+  if (el) el.innerHTML = painel();
+  document.querySelector('.tela-pergunta .fita')?.classList.toggle('gira', modo === 'gravando');
+}
+
+function pararRelogio() {
+  clearInterval(relogio);
+  relogio = undefined;
+}
+
+async function comecarGravacao() {
+  if (!podeGravar()) {
+    modo = 'sem_mic';
+    return desenharPainel();
+  }
+  fita.pausarTudo();
+  try {
+    rec = await gravar();
+  } catch {
+    modo = 'sem_mic';
+    return desenharPainel();
+  }
+  modo = 'gravando';
+  desenharPainel();
+  relogio = window.setInterval(() => {
+    if (!rec) return;
+    const c = document.getElementById('cronometro');
+    if (c) c.textContent = tempo((Date.now() - rec.inicio) / 1000);
+    const nivel = rec.nivel();
+    document.querySelectorAll<HTMLElement>('.leds i').forEach((led, i) => led.classList.toggle('aceso', nivel > (i + 0.5) / 8));
+  }, 120);
+}
+
+async function pararGravacao() {
+  if (!rec) return;
+  const r = rec;
+  rec = null;
+  pararRelogio();
+  try {
+    const { blob, mime } = await r.parar();
+    await guardarResposta(n, blob, mime);
+    prepararDela();
+    modo = 'gravada';
+  } catch (e) {
+    avisar(e instanceof Error ? e.message : 'Não deu pra salvar a gravação');
+    modo = 'inicial';
+  }
+  desenharPainel();
+}
+
+function prepararDela() {
+  const g = estado.gravacoes.get(n);
+  if (g) fita.preparar('noiva', g.id, g.blob, g.mime, g.nome).catch(() => {});
+}
+
+async function prepararDele() {
+  const a = await audioDoNoivo(n);
+  if (a) await fita.preparar('noivo', a.id, a.blob, a.mime, a.nome).catch(() => {});
+}
+
+function liberar() {
+  const f = faixa(n);
+  // dentro do clique: o navegador deixa a fita do noivo começar a tocar
+  if (f?.audio && fita.pronta('noivo', f.audio.id)) fita.tocarDoComeco('noivo').catch(() => {});
+  go(`tocar/${n}`);
+}
+
+async function clique(ev: Event) {
+  const acao = (ev.target as HTMLElement).closest<HTMLElement>('[data-acao]')?.dataset.acao;
+  if (acao === 'gravar') comecarGravacao();
+  else if (acao === 'parar') pararGravacao();
+  else if (acao === 'cancelar') {
+    rec?.cancelar();
+    rec = null;
+    pararRelogio();
+    modo = estado.gravacoes.has(n) ? 'gravada' : 'inicial';
+    desenharPainel();
+  } else if (acao === 'liberar') liberar();
+  else if (acao === 'ouvir-dela') {
+    const g = estado.gravacoes.get(n);
+    if (g && fita.pronta('noiva', g.id)) fita.alternar('noiva').catch(() => {});
+  } else if (acao === 'sem-gravar') {
+    if (semGravarArmado > Date.now()) {
+      semGravarArmado = 0;
+      liberar();
+    } else {
+      semGravarArmado = Date.now() + 4000;
+      desenharPainel();
+      setTimeout(() => modo === 'inicial' && desenharPainel(), 4100);
+    }
+  }
+}
+
+export const pergunta: TelaApp = {
+  montar(r: Rota, raiz) {
+    const f = r.n ? faixa(r.n) : null;
+    if (!f) return go(estado.faixas.length ? 'faixas' : '', true);
+    n = f.n;
+    modo = estado.gravacoes.has(n) ? 'gravada' : 'inicial';
+    semGravarArmado = 0;
+    raiz.innerHTML = `<section class="tela tela-pergunta">
+      <header class="topo">
+        <a class="voltar" href="#/faixas">${icone.voltar}Faixas</a>
+        <span class="sobre">FAIXA ${dois(n)} / ${dois(estado.faixas.length)}</span>
+      </header>
+      <div class="miolo">
+        <div class="cartao"><p class="rotulo">PERGUNTA</p><p class="pergunta">${esc(f.pergunta)}</p></div>
+        <div class="lado-fita">
+          <div class="fita-pergunta">${fitaSvg({ titulo: `Faixa ${dois(n)}`, lacre: 'LACRADA ATÉ ELA RESPONDER', progresso: 0.1 })}</div>
+          <div class="painel">${painel()}</div>
+        </div>
+      </div>
+    </section>`;
+    raiz.querySelector('.tela-pergunta')!.addEventListener('click', clique);
+    prepararDele();
+    prepararDela();
+  },
+  atualizar() {
+    /* nada a redesenhar: a gravação em andamento não pode ser interrompida */
+  },
+  desmontar() {
+    rec?.cancelar();
+    rec = null;
+    pararRelogio();
+    fita.player('noiva').pause();
+  },
+};
